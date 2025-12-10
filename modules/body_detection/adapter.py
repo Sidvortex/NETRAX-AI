@@ -1,8 +1,3 @@
-"""
-JARVIS Body Detection System - Integration Adapter
-Converts gestures to JARVIS commands and integrates with existing system
-"""
-
 import json
 import threading
 import queue
@@ -15,7 +10,7 @@ from gesture import Gesture, GestureType
 
 @dataclass
 class JARVISCommand:
-    """Command to be executed by JARVIS"""
+   
     action: str
     parameters: Dict[str, Any]
     source: str = "body_detection"
@@ -30,7 +25,7 @@ class JARVISCommand:
 
 
 class GestureCommandMapper:
-    """Maps gestures to JARVIS commands"""
+    
     
     DEFAULT_MAPPINGS = {
         # Hand gestures
@@ -59,7 +54,8 @@ class GestureCommandMapper:
             "parameters": {}
         },
         
-        # Swipe gestures
+        
+        # Swipe
         GestureType.SWIPE_LEFT: {
             "action": "previous_track",
             "parameters": {}
@@ -77,7 +73,8 @@ class GestureCommandMapper:
             "parameters": {"amount": 3}
         },
         
-        # Body poses
+        
+        # Body-poses
         GestureType.PAUSE: {
             "action": "pause_detection",
             "parameters": {"duration": 5.0}
@@ -95,7 +92,8 @@ class GestureCommandMapper:
             "parameters": {"direction": "right"}
         },
         
-        # Zoom gestures
+        
+        #Zoom
         GestureType.ZOOM_IN: {
             "action": "zoom_in",
             "parameters": {}
@@ -107,12 +105,7 @@ class GestureCommandMapper:
     }
     
     def __init__(self, config_path: Optional[Path] = None):
-        """
-        Initialize mapper
-        
-        Args:
-            config_path: Path to custom gesture mapping config (JSON)
-        """
+     
         self.mappings = self.DEFAULT_MAPPINGS.copy()
         
         # Load custom mappings if provided
@@ -120,15 +113,7 @@ class GestureCommandMapper:
             self.load_mappings(config_path)
             
     def map(self, gesture: Gesture) -> Optional[JARVISCommand]:
-        """
-        Map gesture to JARVIS command
         
-        Args:
-            gesture: Detected gesture
-            
-        Returns:
-            JARVIS command or None if no mapping exists
-        """
         if gesture.type not in self.mappings:
             return None
             
@@ -151,7 +136,7 @@ class GestureCommandMapper:
         )
         
     def load_mappings(self, config_path: Path):
-        """Load custom gesture mappings from JSON file"""
+        
         try:
             with open(config_path, 'r') as f:
                 custom = json.load(f)
@@ -170,7 +155,7 @@ class GestureCommandMapper:
             print(f"[Mapper] Error loading mappings: {e}")
             
     def save_mappings(self, config_path: Path):
-        """Save current mappings to JSON file"""
+        
         try:
             # Convert to serializable format
             serializable = {
@@ -190,7 +175,7 @@ class GestureCommandMapper:
                    gesture_type: GestureType,
                    action: str,
                    parameters: Dict[str, Any]):
-        """Add or update a gesture mapping"""
+        
         self.mappings[gesture_type] = {
             "action": action,
             "parameters": parameters
@@ -203,64 +188,50 @@ class GestureCommandMapper:
 
 
 class JARVISAdapter:
-    """
-    Adapter for integrating body detection with JARVIS core
-    Provides multiple integration methods: callbacks, queue, or event bus
-    """
+    
     
     def __init__(self,
                  mapper: Optional[GestureCommandMapper] = None,
                  mode: str = "callback"):
-        """
-        Initialize adapter
         
-        Args:
-            mapper: Gesture to command mapper
-            mode: Integration mode - "callback", "queue", or "event_bus"
-        """
         self.mapper = mapper or GestureCommandMapper()
         self.mode = mode
         
-        # Callback handlers
+        
         self.command_callbacks: List[Callable[[JARVISCommand], None]] = []
         
-        # Command queue for queue mode
+        
         self.command_queue = queue.Queue()
         
-        # Event bus integration (if JARVIS has one)
+        
         self.event_bus = None
         
-        # Statistics
+        
         self.gestures_processed = 0
         self.commands_sent = 0
         
         print(f"[Adapter] Initialized in {mode} mode")
         
     def process_gesture(self, gesture: Gesture):
-        """
-        Process a detected gesture and send to JARVIS
-        
-        Args:
-            gesture: Detected gesture
-        """
+       
         self.gestures_processed += 1
         
-        # Map to command
+        
         command = self.mapper.map(gesture)
         if not command:
             return
             
-        # Send command based on mode
+        
         self._send_command(command)
         self.commands_sent += 1
         
     def process_gestures(self, gestures: List[Gesture]):
-        """Process multiple gestures"""
+        
         for gesture in gestures:
             self.process_gesture(gesture)
             
     def _send_command(self, command: JARVISCommand):
-        """Send command to JARVIS based on integration mode"""
+        
         if self.mode == "callback":
             self._send_via_callbacks(command)
         elif self.mode == "queue":
@@ -271,7 +242,7 @@ class JARVISAdapter:
             print(f"[Adapter] Unknown mode: {self.mode}")
             
     def _send_via_callbacks(self, command: JARVISCommand):
-        """Send command via registered callbacks"""
+        
         for callback in self.command_callbacks:
             try:
                 callback(command)
@@ -279,49 +250,49 @@ class JARVISAdapter:
                 print(f"[Adapter] Callback error: {e}")
                 
     def _send_via_queue(self, command: JARVISCommand):
-        """Send command via queue"""
+        
         self.command_queue.put_nowait(command)
         
     def _send_via_event_bus(self, command: JARVISCommand):
-        """Send command via event bus"""
+       
         if self.event_bus:
             self.event_bus.emit("body_detection_command", command.to_dict())
         else:
             print("[Adapter] Event bus not configured")
             
-    # Callback registration
+    
     def register_callback(self, callback: Callable[[JARVISCommand], None]):
-        """Register a callback for commands"""
+      
         self.command_callbacks.append(callback)
         print(f"[Adapter] Registered callback: {callback.__name__}")
         
     def unregister_callback(self, callback: Callable[[JARVISCommand], None]):
-        """Unregister a callback"""
+        
         if callback in self.command_callbacks:
             self.command_callbacks.remove(callback)
             
-    # Queue mode interface
+    
     def get_command(self, timeout: Optional[float] = None) -> Optional[JARVISCommand]:
-        """Get command from queue (for queue mode)"""
+        
         try:
             return self.command_queue.get(timeout=timeout)
         except queue.Empty:
             return None
             
     def has_commands(self) -> bool:
-        """Check if commands are available in queue"""
+        
         return not self.command_queue.empty()
         
-    # Event bus integration
+    
     def set_event_bus(self, event_bus):
-        """Set event bus for event_bus mode"""
+        
         self.event_bus = event_bus
         self.mode = "event_bus"
         print("[Adapter] Event bus configured")
         
-    # Statistics
+    
     def get_stats(self) -> Dict[str, int]:
-        """Get processing statistics"""
+        
         return {
             "gestures_processed": self.gestures_processed,
             "commands_sent": self.commands_sent,
@@ -329,30 +300,27 @@ class JARVISAdapter:
         }
         
     def reset_stats(self):
-        """Reset statistics"""
+       
         self.gestures_processed = 0
         self.commands_sent = 0
 
 
-# Example callback implementation for JARVIS integration
+
 def example_jarvis_callback(command: JARVISCommand):
-    """
-    Example callback that shows how JARVIS would handle commands
-    Replace this with actual JARVIS command execution
-    """
+   
     print(f"[JARVIS] Executing: {command.action} with {command.parameters}")
     
-    # Example command routing
+    
     if command.action == "volume_up":
-        # jarvis.audio.volume_up(command.parameters["amount"])
+        
         print(f"  → Volume up by {command.parameters['amount']}")
         
     elif command.action == "screenshot":
-        # jarvis.system.screenshot()
+        
         print(f"  → Taking screenshot")
         
     elif command.action == "scroll_up":
-        # jarvis.input.scroll(command.parameters["amount"])
+        
         print(f"  → Scrolling up by {command.parameters['amount']}")
         
-    # Add more command handlers here
+    
