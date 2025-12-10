@@ -1,8 +1,3 @@
-"""
-JARVIS Body Detection System - Camera Layer
-Handles webcam capture with frame buffering and preprocessing
-"""
-
 import cv2
 import threading
 import queue
@@ -12,7 +7,7 @@ import numpy as np
 
 
 class CameraStream:
-    """Thread-safe camera stream with frame buffering"""
+   
     
     def __init__(self, 
                  camera_id: int = 0,
@@ -20,16 +15,7 @@ class CameraStream:
                  height: int = 720,
                  fps: int = 30,
                  buffer_size: int = 2):
-        """
-        Initialize camera stream
         
-        Args:
-            camera_id: Camera device ID (0 for default)
-            width: Frame width
-            height: Frame height
-            fps: Target frames per second
-            buffer_size: Frame buffer size (smaller = lower latency)
-        """
         self.camera_id = camera_id
         self.width = width
         self.height = height
@@ -46,7 +32,7 @@ class CameraStream:
         self.actual_fps = 0.0
         
     def start(self) -> bool:
-        """Start camera capture thread"""
+        
         if self.running:
             return True
             
@@ -75,7 +61,7 @@ class CameraStream:
         return True
         
     def stop(self):
-        """Stop camera capture thread"""
+        
         self.running = False
         if self.thread:
             self.thread.join(timeout=2.0)
@@ -85,7 +71,7 @@ class CameraStream:
         print(f"[Camera] Stopped. Dropped {self.dropped_frames} frames")
         
     def _capture_loop(self):
-        """Main capture loop running in background thread"""
+        
         while self.running and self.cap:
             ret, frame = self.cap.read()
             if not ret:
@@ -115,12 +101,7 @@ class CameraStream:
                     pass
                     
     def read(self) -> Optional[np.ndarray]:
-        """
-        Read latest frame from camera
-        
-        Returns:
-            Frame as numpy array (BGR) or None if not available
-        """
+       
         try:
             return self.frame_queue.get(timeout=0.1)
         except queue.Empty:
@@ -134,17 +115,7 @@ class CameraStream:
                         frame: np.ndarray,
                         target_size: Optional[Tuple[int, int]] = None,
                         normalize: bool = False) -> np.ndarray:
-        """
-        Preprocess frame for model input
-        
-        Args:
-            frame: Input frame (BGR)
-            target_size: Resize to (width, height), None to keep original
-            normalize: Normalize to [0, 1] range
-            
-        Returns:
-            Preprocessed frame
-        """
+       
         if frame is None:
             return None
             
@@ -159,20 +130,20 @@ class CameraStream:
         return frame
         
     def flip_frame(self, frame: np.ndarray, horizontal: bool = True) -> np.ndarray:
-        """Flip frame (useful for mirror effect)"""
+       
         if horizontal:
             return cv2.flip(frame, 1)
         return frame
 
 
 class MultiCameraStream:
-    """Manage multiple camera streams"""
+    
     
     def __init__(self):
         self.cameras = {}
         
     def add_camera(self, name: str, camera_id: int = 0, **kwargs) -> CameraStream:
-        """Add and start a camera stream"""
+        
         if name in self.cameras:
             return self.cameras[name]
             
@@ -183,11 +154,11 @@ class MultiCameraStream:
         return None
         
     def get_camera(self, name: str) -> Optional[CameraStream]:
-        """Get camera stream by name"""
+        
         return self.cameras.get(name)
         
     def stop_all(self):
-        """Stop all camera streams"""
+        
         for cam in self.cameras.values():
             cam.stop()
         self.cameras.clear()

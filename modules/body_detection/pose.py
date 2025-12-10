@@ -1,8 +1,3 @@
-"""
-JARVIS Body Detection System - Pose Detection Layer
-Supports MediaPipe Holistic, MoveNet, and extensible architecture
-"""
-
 import cv2
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Any
@@ -12,7 +7,7 @@ import time
 
 
 class PoseFramework(Enum):
-    """Supported pose detection frameworks"""
+    
     MEDIAPIPE = "mediapipe"
     MOVENET = "movenet"
     OPENPOSE = "openpose"
@@ -20,7 +15,7 @@ class PoseFramework(Enum):
 
 @dataclass
 class Keypoint:
-    """Single keypoint with position and confidence"""
+   
     x: float  # Normalized 0-1
     y: float  # Normalized 0-1
     z: float = 0.0  # Depth (if available)
@@ -28,13 +23,13 @@ class Keypoint:
     visibility: float = 1.0  # MediaPipe specific
     
     def to_pixel(self, width: int, height: int) -> Tuple[int, int]:
-        """Convert normalized coords to pixel coords"""
+       
         return (int(self.x * width), int(self.y * height))
 
 
 @dataclass
 class PoseResult:
-    """Complete pose detection result"""
+    
     pose_landmarks: Dict[str, Keypoint] = field(default_factory=dict)
     left_hand_landmarks: Dict[str, Keypoint] = field(default_factory=dict)
     right_hand_landmarks: Dict[str, Keypoint] = field(default_factory=dict)
@@ -45,31 +40,31 @@ class PoseResult:
     framework: str = "unknown"
     
     def has_pose(self) -> bool:
-        """Check if pose was detected"""
+        
         return len(self.pose_landmarks) > 0
         
     def has_hands(self) -> bool:
-        """Check if hands were detected"""
+       
         return len(self.left_hand_landmarks) > 0 or len(self.right_hand_landmarks) > 0
 
 
 class BasePoseDetector:
-    """Base class for pose detectors"""
+    
     
     def __init__(self, **kwargs):
         self.initialized = False
         
     def detect(self, frame: np.ndarray) -> PoseResult:
-        """Detect pose in frame - override in subclass"""
+       
         raise NotImplementedError
         
     def close(self):
-        """Cleanup resources"""
+        
         pass
 
 
 class MediaPipeDetector(BasePoseDetector):
-    """MediaPipe Holistic pose detector"""
+    
     
     def __init__(self,
                  min_detection_confidence: float = 0.5,
@@ -77,16 +72,7 @@ class MediaPipeDetector(BasePoseDetector):
                  model_complexity: int = 1,
                  enable_segmentation: bool = False,
                  smooth_landmarks: bool = True):
-        """
-        Initialize MediaPipe Holistic
-        
-        Args:
-            min_detection_confidence: Minimum confidence for detection
-            min_tracking_confidence: Minimum confidence for tracking
-            model_complexity: 0=Lite, 1=Full, 2=Heavy
-            enable_segmentation: Enable person segmentation
-            smooth_landmarks: Enable landmark smoothing filter
-        """
+       
         super().__init__()
         
         try:
@@ -112,7 +98,7 @@ class MediaPipeDetector(BasePoseDetector):
             self.initialized = False
             
     def detect(self, frame: np.ndarray) -> PoseResult:
-        """Detect pose using MediaPipe"""
+        
         if not self.initialized:
             return PoseResult()
             
@@ -165,7 +151,7 @@ class MediaPipeDetector(BasePoseDetector):
     def _extract_landmarks(self, 
                           landmarks,
                           landmark_enum) -> Dict[str, Keypoint]:
-        """Extract landmarks to dictionary"""
+        
         result = {}
         
         if hasattr(landmark_enum, '__members__'):
@@ -198,12 +184,11 @@ class MediaPipeDetector(BasePoseDetector):
     def draw_landmarks(self, 
                       frame: np.ndarray,
                       pose_result: PoseResult) -> np.ndarray:
-        """Draw landmarks on frame"""
+        
         if not self.initialized:
             return frame
             
-        # Convert dict back to MediaPipe landmarks for drawing
-        # This is a simplified version - for production, store raw results
+       
         annotated = frame.copy()
         
         # Draw pose
@@ -220,7 +205,7 @@ class MediaPipeDetector(BasePoseDetector):
         return annotated
         
     def _draw_pose_connections(self, frame, landmarks, shape):
-        """Draw pose skeleton"""
+       
         h, w = shape[:2]
         
         # Define connections
@@ -251,7 +236,7 @@ class MediaPipeDetector(BasePoseDetector):
             cv2.circle(frame, pt, 4, (0, 0, 255), -1)
             
     def _draw_hand_connections(self, frame, landmarks, shape):
-        """Draw hand skeleton"""
+        
         h, w = shape[:2]
         
         # Draw all hand keypoints
@@ -260,21 +245,16 @@ class MediaPipeDetector(BasePoseDetector):
             cv2.circle(frame, pt, 3, (255, 0, 0), -1)
             
     def close(self):
-        """Cleanup MediaPipe resources"""
+        
         if self.initialized and hasattr(self, 'holistic'):
             self.holistic.close()
 
 
 class MoveNetDetector(BasePoseDetector):
-    """MoveNet pose detector (TensorFlow Lite)"""
+  
     
     def __init__(self, model_type: str = "thunder"):
-        """
-        Initialize MoveNet
-        
-        Args:
-            model_type: "lightning" (fast) or "thunder" (accurate)
-        """
+       
         super().__init__()
         print(f"[Pose] MoveNet not yet implemented (placeholder)")
         # TODO: Implement MoveNet
@@ -285,11 +265,11 @@ class MoveNetDetector(BasePoseDetector):
 
 
 class PoseDetectorFactory:
-    """Factory for creating pose detectors"""
+   
     
     @staticmethod
     def create(framework: PoseFramework, **kwargs) -> BasePoseDetector:
-        """Create pose detector for specified framework"""
+        
         if framework == PoseFramework.MEDIAPIPE:
             return MediaPipeDetector(**kwargs)
         elif framework == PoseFramework.MOVENET:

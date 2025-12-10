@@ -1,8 +1,3 @@
-"""
-JARVIS Body Detection System - Gesture Recognition Layer
-Converts pose data into recognized gestures and commands
-"""
-
 import numpy as np
 from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass
@@ -14,7 +9,7 @@ from pose import PoseResult, Keypoint
 
 
 class GestureType(Enum):
-    """Recognized gesture types"""
+
     # Hand gestures
     PEACE = "peace"  # ✌️
     STOP = "stop"  # ✋
@@ -46,7 +41,7 @@ class GestureType(Enum):
 
 @dataclass
 class Gesture:
-    """Detected gesture with metadata"""
+    
     type: GestureType
     confidence: float
     hand: Optional[str] = None  # "left", "right", or None for body
@@ -62,20 +57,13 @@ class Gesture:
 
 
 class GestureRecognizer:
-    """Recognizes gestures from pose data"""
+    
     
     def __init__(self, 
                  min_confidence: float = 0.6,
                  gesture_hold_time: float = 0.3,
                  swipe_threshold: float = 0.15):
-        """
-        Initialize gesture recognizer
         
-        Args:
-            min_confidence: Minimum confidence to recognize gesture
-            gesture_hold_time: Time to hold gesture for confirmation
-            swipe_threshold: Minimum distance for swipe gestures
-        """
         self.min_confidence = min_confidence
         self.gesture_hold_time = gesture_hold_time
         self.swipe_threshold = swipe_threshold
@@ -85,12 +73,7 @@ class GestureRecognizer:
         self.previous_positions: Dict[str, Keypoint] = {}
         
     def recognize(self, pose_result: PoseResult) -> List[Gesture]:
-        """
-        Recognize gestures from pose result
         
-        Returns:
-            List of detected gestures
-        """
         gestures = []
         
         if not pose_result.has_pose():
@@ -130,7 +113,6 @@ class GestureRecognizer:
     def _recognize_hand_gesture(self,
                                hand_landmarks: Dict[str, Keypoint],
                                hand: str) -> Optional[Gesture]:
-        """Recognize gesture from hand landmarks"""
         
         if len(hand_landmarks) < 21:
             return None
@@ -189,10 +171,7 @@ class GestureRecognizer:
         return None
         
     def _get_finger_states(self, hand_landmarks: Dict[str, Keypoint]) -> List[bool]:
-        """
-        Get extended state for each finger
-        Returns: [thumb, index, middle, ring, pinky]
-        """
+      
         fingers = []
         
         # Finger tip and pip landmark indices (MediaPipe)
@@ -216,7 +195,7 @@ class GestureRecognizer:
         return fingers
         
     def _is_thumb_up(self, hand_landmarks: Dict[str, Keypoint]) -> bool:
-        """Check if thumb is pointing up"""
+        
         if 'thumb_tip' not in hand_landmarks or 'wrist' not in hand_landmarks:
             return False
             
@@ -228,7 +207,7 @@ class GestureRecognizer:
         
     def _recognize_body_pose(self, 
                             pose_landmarks: Dict[str, Keypoint]) -> Optional[Gesture]:
-        """Recognize full body poses"""
+       
         
         if not pose_landmarks:
             return None
@@ -255,7 +234,7 @@ class GestureRecognizer:
         return None
         
     def _are_arms_crossed(self, pose_landmarks: Dict[str, Keypoint]) -> bool:
-        """Check if arms are crossed"""
+        
         required = ['left_wrist', 'right_wrist', 'left_shoulder', 'right_shoulder']
         if not all(k in pose_landmarks for k in required):
             return False
@@ -271,7 +250,7 @@ class GestureRecognizer:
         return left_wrist.x > center_x and right_wrist.x < center_x
         
     def _are_arms_up(self, pose_landmarks: Dict[str, Keypoint]) -> bool:
-        """Check if both arms are raised"""
+        
         required = ['left_wrist', 'right_wrist', 'left_shoulder', 'right_shoulder']
         if not all(k in pose_landmarks for k in required):
             return False
@@ -286,7 +265,7 @@ class GestureRecognizer:
                 right_wrist.y < right_shoulder.y - 0.1)
                 
     def _detect_lean(self, pose_landmarks: Dict[str, Keypoint]) -> Optional[Gesture]:
-        """Detect body leaning"""
+        
         if 'left_shoulder' not in pose_landmarks or 'right_shoulder' not in pose_landmarks:
             return None
             
@@ -315,7 +294,7 @@ class GestureRecognizer:
         
     def _recognize_motion_gestures(self, 
                                   pose_result: PoseResult) -> List[Gesture]:
-        """Recognize motion-based gestures (swipes, etc.)"""
+       
         gestures = []
         
         # Track wrist positions for swipe detection
@@ -360,7 +339,7 @@ class GestureRecognizer:
         return gestures
         
     def _filter_gestures(self, gestures: List[Gesture]) -> List[Gesture]:
-        """Filter gestures using hold time and confidence"""
+        
         filtered = []
         current_time = time.time()
         
