@@ -1,0 +1,88 @@
+{
+  "peace": {
+    "action": "screenshot",
+    "parameters": {}
+  },
+  "stop": {
+    "action": "pause_media",
+    "parameters": {}
+  },
+  "thumbs_up": {
+    "action": "volume_up",
+    "parameters": {
+      "amount": 10
+    }
+  },
+  "thumbs_down": {
+    "action": "volume_down",
+    "parameters": {
+      "amount": 10
+    }
+  },
+  "fist": {
+    "action": "mute",
+    "parameters": {}
+  },
+  "point": {
+    "action": "select",
+    "parameters": {}
+  },
+  "open_palm": {
+    "action": "open_hand",
+    "parameters": {}
+  },
+  "swipe_left": {
+    "action": "previous_track",
+    "parameters": {}
+  },
+  "swipe_right": {
+    "action": "next_track",
+    "parameters": {}
+  },
+  "swipe_up": {
+    "action": "scroll_up",
+    "parameters": {
+      "amount": 3
+    }
+  },
+  "swipe_down": {
+    "action": "scroll_down",
+    "parameters": {
+      "amount": 3
+    }
+  },
+  "pause": {
+    "action": "pause_detection",
+    "parameters": {
+      "duration": 5.0
+    }
+  },
+  "arms_crossed": {
+    "action": "lock_screen",
+    "parameters": {}
+  },
+  "arms_up": {
+    "action": "pause_all",
+    "parameters": {}
+  },
+  "leaning_left": {
+    "action": "switch_workspace",
+    "parameters": {
+      "direction": "left"
+    }
+  },
+  "leaning_right": {
+    "action": "switch_workspace",
+    "parameters": {
+      "direction": "right"
+    }
+  },
+  "zoom_in": {
+    "action": "zoom_in",
+    "parameters": {}
+  },
+  "zoom_out": {
+    "action": "zoom_out",
+    "parameters": {}
+  }
+}

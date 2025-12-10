@@ -1,0 +1,29 @@
+{
+  "camera_id": 3,
+  "camera_width": 1280,
+  "camera_height": 720,
+  "camera_fps": 30,
+  "mirror_camera": true,
+  
+  "pose_framework": "mediapipe",
+  "pose_confidence": 0.5,
+  "pose_tracking_confidence": 0.5,
+  "pose_model_complexity": 1,
+  
+  "gesture_min_confidence": 0.6,
+  "gesture_hold_time": 0.3,
+  "swipe_threshold": 0.15,
+  
+  "enable_smoothing": true,
+  "smoothing_type": "one_euro",
+  
+  "integration_mode": "callback",
+  "gesture_mapping_file": "gesture_mappings.json",
+  
+  "show_visualization": true,
+  "show_fps": true,
+  "visualization_scale": 0.5,
+  
+  "target_fps": 30,
+  "skip_frames": 0
+}
