@@ -1,9 +1,9 @@
-🌀 NETRAX AI
+🌀 NETRAX AI - नेत्रः
 Human-Motion Driven Personal Assistant
 
 Gesture-controlled • Body-aware • JARVIS-inspired
 
-NETRAX AI is an advanced, real-time body detection + gesture recognition system designed to integrate directly with a personal AI assistant.
+NETRAX AI (pronounced as, "नेत्रः") is an advanced, real-time body detection + gesture recognition system designed to integrate directly with a personal AI assistant.
 Using MediaPipe Holistic, custom gesture recognition logic, and a modular adapter, NETRAX AI transforms human motion into commands.
 
 Whether you raise a hand, make a peace sign, swipe your arm, or lean your body — NETRAX detects it and routes it as a precise command to your JARVIS-style system.
