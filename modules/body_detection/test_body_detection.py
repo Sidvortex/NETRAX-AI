@@ -1,7 +1,3 @@
-"""
-JARVIS Body Detection System - Unit Tests
-"""
-
 import unittest
 import numpy as np
 import time
@@ -14,7 +10,7 @@ from adapter import GestureCommandMapper, JARVISAdapter, JARVISCommand
 
 
 class TestKeypoint(unittest.TestCase):
-    """Test Keypoint class"""
+   
     
     def test_creation(self):
         kp = Keypoint(x=0.5, y=0.5, z=0.0, confidence=0.9)
@@ -29,7 +25,7 @@ class TestKeypoint(unittest.TestCase):
 
 
 class TestPoseResult(unittest.TestCase):
-    """Test PoseResult class"""
+    
     
     def test_empty_pose(self):
         result = PoseResult()
@@ -43,7 +39,7 @@ class TestPoseResult(unittest.TestCase):
 
 
 class TestGestureRecognizer(unittest.TestCase):
-    """Test gesture recognition"""
+    
     
     def setUp(self):
         self.recognizer = GestureRecognizer(
@@ -52,7 +48,7 @@ class TestGestureRecognizer(unittest.TestCase):
         )
         
     def create_hand_landmarks(self, finger_states):
-        """Helper to create hand landmarks"""
+        
         landmarks = {}
         
         # Simplified hand landmark creation
@@ -82,8 +78,7 @@ class TestGestureRecognizer(unittest.TestCase):
         return landmarks
         
     def test_peace_gesture(self):
-        """Test peace sign recognition"""
-        # Peace: index and middle extended
+       
         hand = self.create_hand_landmarks([False, True, True, False, False])
         
         pose_result = PoseResult()
@@ -100,8 +95,7 @@ class TestGestureRecognizer(unittest.TestCase):
         self.assertTrue(peace_found or len(gestures) == 0)  # May need multiple frames
         
     def test_fist_gesture(self):
-        """Test fist recognition"""
-        # Fist: all fingers folded
+       
         hand = self.create_hand_landmarks([False, False, False, False, False])
         
         pose_result = PoseResult()
@@ -116,13 +110,13 @@ class TestGestureRecognizer(unittest.TestCase):
 
 
 class TestGestureCommandMapper(unittest.TestCase):
-    """Test gesture to command mapping"""
+    
     
     def setUp(self):
         self.mapper = GestureCommandMapper()
         
     def test_default_mappings(self):
-        """Test default gesture mappings exist"""
+       
         gesture = Gesture(
             type=GestureType.PEACE,
             confidence=0.9,
@@ -134,7 +128,7 @@ class TestGestureCommandMapper(unittest.TestCase):
         self.assertEqual(command.action, "screenshot")
         
     def test_custom_mapping(self):
-        """Test adding custom mapping"""
+       
         self.mapper.add_mapping(
             GestureType.PEACE,
             "custom_action",
@@ -148,17 +142,17 @@ class TestGestureCommandMapper(unittest.TestCase):
         self.assertEqual(command.parameters["param"], "value")
         
     def test_unknown_gesture(self):
-        """Test unknown gesture returns None"""
+       
         gesture = Gesture(type=GestureType.UNKNOWN, confidence=0.9)
         command = self.mapper.map(gesture)
         self.assertIsNone(command)
 
 
 class TestJARVISAdapter(unittest.TestCase):
-    """Test JARVIS integration adapter"""
+    
     
     def test_callback_mode(self):
-        """Test callback integration mode"""
+       
         adapter = JARVISAdapter(mode="callback")
         
         received_commands = []
@@ -177,7 +171,7 @@ class TestJARVISAdapter(unittest.TestCase):
         self.assertEqual(received_commands[0].action, "screenshot")
         
     def test_queue_mode(self):
-        """Test queue integration mode"""
+        
         adapter = JARVISAdapter(mode="queue")
         
         # Process gesture
@@ -191,7 +185,7 @@ class TestJARVISAdapter(unittest.TestCase):
         self.assertEqual(command.action, "volume_up")
         
     def test_statistics(self):
-        """Test adapter statistics"""
+        
         adapter = JARVISAdapter(mode="callback")
         
         gestures = [
@@ -210,10 +204,10 @@ class TestJARVISAdapter(unittest.TestCase):
 
 
 class TestKeypointTracker(unittest.TestCase):
-    """Test keypoint tracking and smoothing"""
+    
     
     def test_moving_average(self):
-        """Test moving average smoothing"""
+        
         tracker = KeypointTracker(smoothing_type="moving_average", window_size=3)
         
         keypoints = {
@@ -229,7 +223,7 @@ class TestKeypointTracker(unittest.TestCase):
         self.assertIsNotNone(smoothed['test'])
         
     def test_exponential_smoothing(self):
-        """Test exponential smoothing"""
+        
         tracker = KeypointTracker(smoothing_type="exponential")
         
         keypoints = {'test': Keypoint(0.5, 0.5)}
@@ -245,10 +239,10 @@ class TestKeypointTracker(unittest.TestCase):
 
 
 class TestPoseTracker(unittest.TestCase):
-    """Test pose tracking"""
+    
     
     def test_tracking(self):
-        """Test basic pose tracking"""
+       
         tracker = PoseTracker(smoothing_type="moving_average")
         
         pose_result = PoseResult()
@@ -263,7 +257,7 @@ class TestPoseTracker(unittest.TestCase):
 
 
 def run_tests():
-    """Run all tests"""
+    
     unittest.main(argv=[''], verbosity=2, exit=False)
 
 

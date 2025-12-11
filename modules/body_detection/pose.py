@@ -132,7 +132,7 @@ class MediaPipeDetector(BasePoseDetector):
                 self.mp.solutions.hands.HandLandmark
             )
             
-        # Extract face landmarks
+        
         if results.face_landmarks:
             # Only keep key face points (eyes, nose, mouth corners)
             key_indices = [0, 4, 13, 14, 33, 133, 152, 263, 362, 468]

@@ -1,8 +1,3 @@
-"""
-JARVIS Body Detection System - Tracking & Smoothing Layer
-Reduces jitter and tracks poses across frames
-"""
-
 import numpy as np
 from typing import Dict, Optional, Deque
 from collections import deque
