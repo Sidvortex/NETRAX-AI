@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NETRAX-AI | नेत्रः</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --pastel-cyan: #9FE2BF;
+            --pastel-flesh: #FFD1DC;
+            --pastel-sky: #B4E7F5;
+            --pastel-mauve: #C8A2C8;
+            --dark-text: #4A4A4A;
+            --light-text: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--pastel-cyan) 0%, #A8E6CF 100%);
+            color: var(--dark-text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            border: 3px solid var(--pastel-flesh);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 3em;
+            color: var(--pastel-mauve);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--dark-text);
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 3px solid var(--pastel-flesh);
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-title {
+            color: var(--pastel-mauve);
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid var(--pastel-sky);
+            padding-bottom: 10px;
+        }
+
+        .video-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 3px solid var(--pastel-sky);
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-placeholder {
+            color: var(--pastel-mauve);
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--pastel-mauve);
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .gesture-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .gesture-item {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid var(--pastel-sky);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .gesture-item:hover {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: var(--pastel-mauve);
+            transform: scale(1.05);
+        }
+
+        .gesture-icon {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+        }
+
+        .gesture-name {
+            color: var(--pastel-mauve);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .gesture-action {
+            font-size: 0.9em;
+            color: var(--dark-text);
+            opacity: 0.7;
+        }
+
+        .gesture-item.active {
+            background: var(--pastel-mauve);
+            border-color: var(--pastel-mauve);
+            animation: gestureDetected 0.5s ease;
+        }
+
+        .gesture-item.active .gesture-name,
+        .gesture-item.active .gesture-action {
+            color: white;
+        }
+
+        @keyframes gestureDetected {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid var(--pastel-sky);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            color: var(--pastel-mauve);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: var(--dark-text);
+            opacity: 0.8;
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 2px solid var(--pastel-flesh);
+            background: rgba(255, 255, 255, 0.6);
+            color: var(--dark-text);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+
+        .btn:hover {
+            background: var(--pastel-flesh);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn.primary {
+            background: var(--pastel-mauve);
+            border-color: var(--pastel-mauve);
+            color: white;
+        }
+
+        .btn.primary:hover {
+            background: #B88CB8;
+            border-color: #B88CB8;
+        }
+
+        .btn.active {
+            background: var(--pastel-sky);
+            border-color: var(--pastel-sky);
+        }
+
+        .activity-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid var(--pastel-sky);
+        }
+
+        .log-entry {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            border-left: 4px solid var(--pastel-mauve);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .log-time {
+            color: var(--pastel-mauve);
+            font-size: 0.85em;
+            margin-right: 10px;
+        }
+
+        .config-section {
+            margin-top: 20px;
+        }
+
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--pastel-sky);
+        }
+
+        .config-label {
+            color: var(--dark-text);
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            accent-color: var(--pastel-mauve);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: var(--pastel-sky);
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--pastel-mauve);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: left 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            left: 27px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+
+        .icon {
+            display: inline-block;
+        }
+
+        .performance-meter {
+            margin-top: 15px;
+        }
+
+        .meter-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid var(--pastel-sky);
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--pastel-mauve), var(--pastel-sky));
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .meter-label {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 0.85em;
+            color: var(--dark-text);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NETRAX-AI 👁‍🗨 सत्यदृष्टि</h1>
+            <p class="subtitle">Real-time Gesture Detection Interface</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Video Feed -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="status-indicator"></span>
+                    <span>📹 Live Camera Feed</span>
+                </div>
+                <div class="video-container">
+                    <div class="video-placeholder">
+                        <p>🎥 Camera feed will appear here</p>
+                        <p style="font-size: 0.9em; margin-top: 10px; opacity: 0.7;">Click "Start Detection" to begin</p>
+                    </div>
+                </div>
+                <div class="control-panel">
+                    <button class="btn primary" onclick="startDetection()">▶️ Start Detection</button>
+                    <button class="btn" onclick="stopDetection()">⏹️ Stop</button>
+                    <button class="btn" onclick="pauseDetection()">⏸️ Pause</button>
+                    <button class="btn" onclick="takeScreenshot()">📸 Screenshot</button>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">📊</span>
+                    <span>Performance Statistics</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="fps-value">0</div>
+                        <div class="stat-label">FPS</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="gesture-count">0</div>
+                        <div class="stat-label">Gestures</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="detection-count">0</div>
+                        <div class="stat-label">Detections</div>
+                    </div>
+                </div>
+                
+                <div class="performance-meter">
+                    <div class="meter-label">
+                        <span>CPU Usage</span>
+                        <span id="cpu-percent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="cpu-meter" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="performance-meter">
+                    <div class="meter-label">
+                        <span>Detection Confidence</span>
+                        <span id="confidence-percent">0%</span>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="confidence-meter" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gesture Library -->
+            <div class="card full-width">
+                <div class="card-title">
+                    <span class="icon">👋</span>
+                    <span>Available Gestures</span>
+                </div>
+                <div class="gesture-grid" id="gesture-grid">
+                    <div class="gesture-item" data-gesture="peace">
+                        <div class="gesture-icon">✌️</div>
+                        <div class="gesture-name">Peace</div>
+                        <div class="gesture-action">Screenshot</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="stop">
+                        <div class="gesture-icon">✋</div>
+                        <div class="gesture-name">Stop</div>
+                        <div class="gesture-action">Pause Media</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="thumbs_up">
+                        <div class="gesture-icon">👍</div>
+                        <div class="gesture-name">Thumbs Up</div>
+                        <div class="gesture-action">Volume +</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="thumbs_down">
+                        <div class="gesture-icon">👎</div>
+                        <div class="gesture-name">Thumbs Down</div>
+                        <div class="gesture-action">Volume -</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="fist">
+                        <div class="gesture-icon">✊</div>
+                        <div class="gesture-name">Fist</div>
+                        <div class="gesture-action">Mute</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="point">
+                        <div class="gesture-icon">👉</div>
+                        <div class="gesture-name">Point</div>
+                        <div class="gesture-action">Select</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="swipe_right">
+                        <div class="gesture-icon">➡️</div>
+                        <div class="gesture-name">Swipe Right</div>
+                        <div class="gesture-action">Next Track</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="swipe_left">
+                        <div class="gesture-icon">⬅️</div>
+                        <div class="gesture-name">Swipe Left</div>
+                        <div class="gesture-action">Previous</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="swipe_up">
+                        <div class="gesture-icon">⬆️</div>
+                        <div class="gesture-name">Swipe Up</div>
+                        <div class="gesture-action">Scroll Up</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="swipe_down">
+                        <div class="gesture-icon">⬇️</div>
+                        <div class="gesture-name">Swipe Down</div>
+                        <div class="gesture-action">Scroll Down</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="arms_up">
+                        <div class="gesture-icon">🙆</div>
+                        <div class="gesture-name">Arms Up</div>
+                        <div class="gesture-action">Pause System</div>
+                    </div>
+                    <div class="gesture-item" data-gesture="arms_crossed">
+                        <div class="gesture-icon">❌</div>
+                        <div class="gesture-name">Arms Crossed</div>
+                        <div class="gesture-action">Lock Screen</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">📝</span>
+                    <span>Activity Log</span>
+                </div>
+                <div class="activity-log" id="activity-log">
+                    <div class="log-entry">
+                        <span class="log-time">00:00:00</span>
+                        <span>System initialized</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration -->
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon">⚙️</span>
+                    <span>Configuration</span>
+                </div>
+                <div class="config-section">
+                    <div class="config-item">
+                        <span class="config-label">Show Visualization</span>
+                        <div class="toggle-switch active" onclick="toggleConfig(this, 'visualization')"></div>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Enable Smoothing</span>
+                        <div class="toggle-switch active" onclick="toggleConfig(this, 'smoothing')"></div>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Mirror Camera</span>
+                        <div class="toggle-switch active" onclick="toggleConfig(this, 'mirror')"></div>
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Confidence: <span id="confidence-value">60%</span></span>
+                        <input type="range" min="30" max="90" value="60" 
+                               oninput="updateConfig('confidence', this.value)">
+                    </div>
+                    <div class="config-item">
+                        <span class="config-label">Hold Time: <span id="holdtime-value">0.3s</span></span>
+                        <input type="range" min="1" max="10" value="3" 
+                               oninput="updateConfig('holdtime', this.value)">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let detectionActive = false;
+        let gestureCount = 0;
+        let detectionCount = 0;
+        let startTime = Date.now();
+
+        function startDetection() {
+            detectionActive = true;
+            addLog('Detection started');
+            simulateDetection();
+        }
+
+        function stopDetection() {
+            detectionActive = false;
+            addLog('Detection stopped');
+        }
+
+        function pauseDetection() {
+            detectionActive = false;
+            addLog('Detection paused');
+        }
+
+        function takeScreenshot() {
+            addLog('Screenshot captured');
+        }
+
+        function addLog(message) {
+            const log = document.getElementById('activity-log');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">${time}</span><span>${message}</span>`;
+            log.insertBefore(entry, log.firstChild);
+            
+            // Keep only last 20 entries
+            while (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function activateGesture(gestureName) {
+            const items = document.querySelectorAll('.gesture-item');
+            items.forEach(item => {
+                if (item.dataset.gesture === gestureName) {
+                    item.classList.add('active');
+                    setTimeout(() => item.classList.remove('active'), 500);
+                }
+            });
+        }
+
+        function updateStats() {
+            // Simulate FPS
+            const fps = Math.floor(25 + Math.random() * 10);
+            document.getElementById('fps-value').textContent = fps;
+            
+            // Update counts
+            document.getElementById('gesture-count').textContent = gestureCount;
+            document.getElementById('detection-count').textContent = detectionCount;
+            
+            // Update meters
+            const cpu = Math.floor(20 + Math.random() * 20);
+            document.getElementById('cpu-percent').textContent = cpu + '%';
+            document.getElementById('cpu-meter').style.width = cpu + '%';
+            
+            const confidence = Math.floor(75 + Math.random() * 20);
+            document.getElementById('confidence-percent').textContent = confidence + '%';
+            document.getElementById('confidence-meter').style.width = confidence + '%';
+        }
+
+        function simulateDetection() {
+            if (!detectionActive) return;
+            
+            // Simulate random gesture detection
+            if (Math.random() > 0.95) {
+                const gestures = ['peace', 'stop', 'thumbs_up', 'thumbs_down', 'fist', 'point', 
+                                'swipe_right', 'swipe_left', 'swipe_up', 'swipe_down'];
+                const randomGesture = gestures[Math.floor(Math.random() * gestures.length)];
+                const gestureName = randomGesture.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                activateGesture(randomGesture);
+                addLog(`Gesture detected: ${gestureName}`);
+                gestureCount++;
+            }
+            
+            if (Math.random() > 0.9) {
+                detectionCount++;
+            }
+            
+            updateStats();
+            
+            setTimeout(simulateDetection, 100);
+        }
+
+        function toggleConfig(element, configName) {
+            element.classList.toggle('active');
+            const state = element.classList.contains('active') ? 'enabled' : 'disabled';
+            addLog(`${configName.charAt(0).toUpperCase() + configName.slice(1)} ${state}`);
+        }
+
+        function updateConfig(type, value) {
+            if (type === 'confidence') {
+                document.getElementById('confidence-value').textContent = value + '%';
+            } else if (type === 'holdtime') {
+                const time = (value / 10).toFixed(1);
+                document.getElementById('holdtime-value').textContent = time + 's';
+            }
+            addLog(`${type.charAt(0).toUpperCase() + type.slice(1)} updated to ${type === 'confidence' ? value + '%' : (value/10).toFixed(1) + 's'}`);
+        }
+
+        // Update stats periodically
+        setInterval(updateStats, 1000);
+        
+        // Initial stats
+        updateStats();
+    </script>
+</body>
+</html>
