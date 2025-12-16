@@ -1,0 +1,16 @@
+# Local, private data: faces, snapshots, database. Never commit.
+data/
+# Downloaded models (auto-fetched on first run)
+models/
+# Your personal config (config.default.yaml is the tracked template)
+config.yaml
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+*.log
+.env
