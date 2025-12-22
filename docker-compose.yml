@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  netrax-vision:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base  # Use 'gpu' for GPU support
+    
+    container_name: netrax-ai-vision
+    
+    ports:
+      - "8000:8000"
+    
+    # Camera access
+    devices:
+      - "/dev/video0:/dev/video0"  # Adjust based on your camera
+    
+    # GPU support (requires nvidia-docker)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    
+    volumes:
+      - ./models:/app/models  # Persistent model storage
+      - ./logs:/app/logs      # Log files
+    
+    environment:
+      # Server Configuration
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+      
+      # Camera Settings
+      - CAMERA_INDEX=0
+      - FRAME_WIDTH=1280
+      - FRAME_HEIGHT=720
+      - TARGET_FPS=30
+      
+      # Vision Modules
+      - ENABLE_BODY_TRACKING=true
+      - ENABLE_IRIS_TRACKING=true
+      - ENABLE_GESTURE_RECOGNITION=true
+      - ENABLE_OBJECT_DETECTION=false
+      
+      # Performance
+      - USE_GPU=false
+      - ENABLE_KALMAN_FILTER=true
+      
+      # Visual Effects
+      - ENABLE_CYBERPUNK_OVERLAY=true
+      - ENABLE_GLOW_EFFECT=true
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Optional: Add Redis for caching/state management
+#  redis:
+#    image: redis:7-alpine
+#    container_name: netrax-redis
+#    ports:
+#      - "6379:6379"
+#    restart: unless-stopped
+
+networks:
+  default:
+    name: netrax-network
