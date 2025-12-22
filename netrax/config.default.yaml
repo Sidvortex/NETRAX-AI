@@ -1,0 +1,96 @@
+# NETRAX default configuration.
+#
+# Copy to ./config.yaml (or let the Settings page create it) and change what you need.
+# Anything you leave out falls back to the values below.
+# Paths are relative to the folder that holds config.yaml.
+
+camera:
+  source: 0            # webcam index (0, 1, ...), an MJPEG/RTSP URL, or a video file path
+  width: 640           # requested capture size (webcams may pick the nearest mode)
+  height: 480
+  fps: 30
+  loop_file: true      # restart video files when they end
+  mirror: false        # flip horizontally (selfie view)
+
+hub:
+  host: 0.0.0.0        # 0.0.0.0 = reachable from your phone on the same WiFi; 127.0.0.1 = this laptop only
+  port: 8000
+  stream_fps: 15       # max FPS of the MJPEG stream sent to browsers
+  jpeg_quality: 75
+
+paths:
+  data_dir: data       # database, face photos, snapshots, events.jsonl (git-ignored)
+  models_dir: models   # downloaded ONNX models (git-ignored)
+
+modules:
+  face_detect:         # OpenCV YuNet
+    enabled: true
+    every_n: 1         # run every Nth frame (results are reused in between)
+    score_threshold: 0.75
+    nms_threshold: 0.3
+    max_side: 640      # downscale frames so the longer side is at most this before detecting
+    min_face: 40       # ignore faces smaller than this (pixels, original frame)
+
+  face_recog:          # OpenCV SFace, matched against the people DB
+    enabled: true
+    threshold: 0.363   # cosine similarity needed to call it a match (SFace default 0.363)
+    recheck_every: 15  # re-run recognition on a tracked face every N frames
+    votes: 5           # identity = majority over the last N recognitions of a track
+
+  head_pose:           # solvePnP on YuNet's 5 landmarks (no extra model)
+    enabled: true
+    smoothing: 0.5     # 0 = raw, 0.9 = very smooth
+    look_threshold: 15 # degrees before we call it "left/right/up/down"
+
+  hands:               # MediaPipe palm + hand landmarks (ONNX) -> gestures
+    enabled: false
+    every_n: 2
+    max_hands: 2
+    palm_score: 0.6
+    landmark_conf: 0.8
+    stable_frames: 3   # a gesture must hold this many runs before it is reported
+
+  pose:                # MediaPipe person detector + BlazePose (ONNX), drawn as COCO-17
+    enabled: false
+    every_n: 2
+    person_score: 0.5
+    min_visibility: 0.5
+    style: skeleton    # skeleton | dance
+    slouch_ratio: 0.55 # (shoulders - nose) / shoulder width below this = slouching
+    tilt_deg: 12       # shoulder tilt above this = leaning
+
+  objects:             # NanoDet-Plus (default) or YOLOX-S, COCO 80 classes
+    enabled: false
+    model: nanodet     # nanodet | yolox
+    every_n: 5
+    score_threshold: 0.4
+    nms_threshold: 0.5
+    classes: []        # only report these labels (empty = all)
+
+  emotion:             # OpenCV Zoo MobileFaceNet facial expression (7 classes)
+    enabled: false
+    every_n: 10
+
+events:
+  seen_cooldown_s: 120     # log "seen <name>" at most once per person per this many seconds
+  unknown_after: 3         # recognitions without a match before a face counts as unknown
+  unknown_cooldown_s: 30
+  gesture_cooldown_s: 3
+  object_cooldown_s: 60
+  object_ignore: [person]  # don't log these object classes as events
+  posture_after_s: 20      # log slouching only after it lasts this long
+  snapshot_seen: false     # also save a snapshot for known people
+  keep_days: 30            # delete events + snapshots older than this (0 = keep forever)
+
+outputs:
+  jsonl:
+    enabled: true
+    path: data/events.jsonl
+  mqtt:                    # optional JINX link, OFF by default
+    enabled: false
+    host: 192.168.1.39
+    port: 1883
+    client_id: netrax-hub
+    head_track_hz: 12      # jinx/head_track rate limit
+    rate_hz: 5             # netrax/faces, netrax/pose, netrax/objects rate limit
+    status_every_s: 5
