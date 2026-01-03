@@ -542,8 +542,8 @@ Contributions welcome! Please:
 ## 📧 Support
 
 - Issues: https://github.com/Sidvortex/NETRAX-AI
-- Docs: 
-- Email: Ravada Siddharth
+- Docs: ---
+- Email: ravadasiddharth@gmail.com
 
 ---
 
