@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRAX · Live</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js"></script>
+</head>
+<body>
+<main class="grid-live">
+  <section>
+    <div class="viewport" id="viewport">
+      <img id="video" alt="live camera">
+      <div class="offline" id="offline">no video yet: waiting for the camera…</div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="panel">
+      <div class="panel-head"><h2>Modules</h2><span class="muted mono" style="font-size:11px">on · overlay</span></div>
+      <div id="modules"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>In view</h2><span class="muted mono" id="frame-no"></span></div>
+      <ul class="list" id="seen"></ul>
+    </div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+const { el, api, toast, onStatus, MODULE_LABELS } = NX;
+
+// --- video: reconnect the MJPEG stream if it drops --------------------------
+const img = document.getElementById("video");
+const vp = document.getElementById("viewport");
+function connect() { img.src = "/stream.mjpg?t=" + Date.now(); }
+img.addEventListener("load", () => vp.classList.remove("down"));
+img.addEventListener("error", () => { vp.classList.add("down"); setTimeout(connect, 1500); });
+connect();
+
+// --- module toggles ----------------------------------------------------------
+const modBox = document.getElementById("modules");
+const overlay = {};
+function renderModules(status) {
+  const cfgMods = status.modules || {};
+  const rows = Object.keys(MODULE_LABELS).map(name => {
+    const m = cfgMods[name] || { state: "off" };
+    if (m.overlay !== undefined) overlay[name] = m.overlay;
+    const on = m.state !== "off";
+    const meta = m.state === "ready" ? `${m.fps} fps · ${m.ms} ms` : (m.state === "error" ? (m.error || "error") : m.state);
+    const sw = el("label", { class: "switch", title: "enable module" },
+      el("input", { type: "checkbox", checked: on, onchange: e => setModule(name, { enabled: e.target.checked }) }),
+      el("span"));
+    const eye = el("button", { class: "eye" + (overlay[name] !== false ? " on" : ""), title: "show on video",
+      onclick: () => setModule(name, { overlay: overlay[name] === false }) }, "◉");
+    return el("div", { class: "mod" },
+      el("div", {}, el("div", { class: "name" }, el("i", { class: `dot ${m.state}` }), MODULE_LABELS[name]),
+        el("div", { class: "meta", title: m.error || "" }, meta)),
+      eye, sw);
+  });
+  modBox.replaceChildren(...rows);
+}
+async function setModule(name, body) {
+  try {
+    const r = await api(`/api/modules/${name}`, { json: body });
+    overlay[name] = r.overlay;
+    if (body.enabled !== undefined) toast(`${MODULE_LABELS[name]} ${r.enabled ? "enabled" : "disabled"}`);
+  } catch (e) { toast(e.message, true); }
+}
+onStatus(s => { if (!modBox.contains(document.activeElement)) renderModules(s); });
+
+// --- what's in view ---------------------------------------------------------
+const seen = document.getElementById("seen");
+async function pollState() {
+  try {
+    const s = await api("/api/state");
+    document.getElementById("frame-no").textContent = s.frame !== undefined ? `#${s.frame}` : "";
+    const items = [];
+    for (const f of s.faces || []) {
+      const role = f.role || (f.name ? "pending" : "");
+      const name = f.name ? (f.name === "..." ? "identifying…" : f.name) : `face #${f.track_id}`;
+      const bits = [];
+      if (f.confidence !== undefined) bits.push(`${(f.confidence * 100).toFixed(0)}%`);
+      if (f.direction) bits.push(`looking ${f.direction}`);
+      if (f.emotion) bits.push(f.emotion);
+      items.push(el("li", {}, el("span", {}, "👤 ", name, " ", el("span", { class: "muted" }, bits.join(" · "))),
+        role ? el("span", { class: `tag role-${role}` }, role) : ""));
+    }
+    for (const h of s.hands || []) if (h.gesture !== "none")
+      items.push(el("li", {}, el("span", {}, "✋ ", h.gesture.replace("_", " ")), el("span", { class: "muted mono" }, h.handedness)));
+    for (const p of s.poses || [])
+      items.push(el("li", {}, el("span", {}, "🧍 posture"), el("span", { class: "mono" }, p.posture)));
+    for (const o of s.objects || [])
+      items.push(el("li", {}, el("span", {}, "▣ ", o.label), el("span", { class: "muted mono" }, `${(o.score * 100).toFixed(0)}%`)));
+    seen.replaceChildren(...(items.length ? items : [el("li", { class: "empty" }, "nothing detected")]));
+  } catch { /* hub restarting */ }
+}
+setInterval(pollState, 400);
+</script>
+</body>
+</html>
