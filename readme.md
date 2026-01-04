@@ -31,28 +31,28 @@ A sentient surveillance system featuring full-body tracking, ultra-precision iri
 ## 📁 Project Structure
 
 
-netrax-vision/
-├── main.py                      # Core FastAPI server
-├── config.py                    # Configuration management
-├── requirements.txt             # Python dependencies
-├── Dockerfile                   # Container configuration
-├── docker-compose.yml           # Orchestration
-├── .env.example                 # Configuration template
-│
-├── vision_engine/
-│   ├── __init__.py
-│   ├── body_tracker.py          # Full-body pose tracking
-│   ├── iris_tracker.py          # Ultra-precision iris/eye tracking
-│   ├── gesture_engine.py        # Gesture recognition
-│   ├── object_detector.py       # YOLO object detection
-│   ├── tracking_coordinator.py  # Master coordinator
-│   ├── visualizer.py            # Cyberpunk visual effects
-│   └── filters.py               # Kalman filters
-│
-├── models/                      # AI models (auto-downloaded)
-├── logs/                        # Application logs
-└── frontend/
-    └── index.html               # Your existing frontend
+    netrax-vision/
+    ├── main.py                      # Core FastAPI server
+    ├── config.py                    # Configuration management
+    ├── requirements.txt             # Python dependencies
+    ├── Dockerfile                   # Container configuration
+    ├── docker-compose.yml           # Orchestration
+    ├── .env.example                 # Configuration template
+    │
+    ├── vision_engine/
+    │   ├── __init__.py
+    │   ├── body_tracker.py          # Full-body pose tracking
+    │   ├── iris_tracker.py          # Ultra-precision iris/eye tracking
+    │   ├── gesture_engine.py        # Gesture recognition
+    │   ├── object_detector.py       # YOLO object detection
+    │   ├── tracking_coordinator.py  # Master coordinator
+    │   ├── visualizer.py            # Cyberpunk visual effects
+    │   └── filters.py               # Kalman filters
+    │
+    ├── models/                      # AI models (auto-downloaded)
+    ├── logs/                        # Application logs
+    └── frontend/
+        └── index.html               # Your existing frontend
 
 
 
