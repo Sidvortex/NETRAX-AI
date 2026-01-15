@@ -53,10 +53,7 @@ class Detector:
 
 
 def load_net(path: str) -> cv2.dnn.Net:
-    net = cv2.dnn.readNetFromONNX(path)
-    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
-    net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-    return net
+    return cv2.dnn.readNetFromONNX(path)   # CPU, default engine
 
 
 def forward_named(net: cv2.dnn.Net, blob: np.ndarray) -> dict[str, np.ndarray]:
