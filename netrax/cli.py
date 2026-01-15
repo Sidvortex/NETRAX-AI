@@ -272,6 +272,13 @@ def _cpu_name() -> str:
     return platform.processor() or "unknown CPU"
 
 
+# doctor --------------------------------------------------------------------
+def cmd_doctor(args) -> int:
+    from netrax import doctor
+
+    return doctor.run(args)
+
+
 # parser --------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="netrax", description="NETRAX local vision hub")
@@ -304,6 +311,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--frames", type=int, default=60, help="frames to capture first (default 60)")
     sp.add_argument("--seconds", type=float, default=10.0, help="how long to process (default 10)")
     sp.set_defaults(fn=cmd_bench)
+
+    sp = sub.add_parser("doctor", help="check deps, models, camera, DB")
+    source_arg(sp)
+    sp.add_argument("--no-camera", action="store_true", help="skip the camera test")
+    sp.add_argument("--deep", action="store_true", help="also verify model SHA-256 hashes")
+    sp.set_defaults(fn=cmd_doctor)
 
     sp = sub.add_parser("models", help="list models, or download them")
     sp.add_argument("--download", action="store_true", help="download models of enabled modules")
