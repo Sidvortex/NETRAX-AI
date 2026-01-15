@@ -67,3 +67,17 @@ def test_deep_merge_does_not_mutate():
     out = deep_merge(a, b)
     assert out == {"x": {"y": 2, "z": [1]}}
     assert a == {"x": {"y": 1, "z": [1]}}
+
+
+def test_cli_overrides_are_not_saved(tmp_path):
+    p = tmp_path / "config.yaml"
+    p.write_text("camera:\n  source: 1\n")
+    s = Settings(p, overrides={"camera": {"source": "clip.mp4"}, "hub": {"port": 9000}})
+    assert s.cfg.camera.source == "clip.mp4"
+    s.update({"modules": {"hands": {"enabled": True}}})
+    saved = Settings(p).cfg
+    assert saved.camera.source == 1 and saved.hub.port == 8000
+    assert saved.modules.hands.enabled is True
+    # but a value the user explicitly changed in the UI is saved
+    s.update({"hub": {"port": 8100}})
+    assert Settings(p).cfg.hub.port == 8100

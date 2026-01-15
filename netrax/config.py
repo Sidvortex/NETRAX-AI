@@ -204,6 +204,9 @@ class Settings:
         defaults = _read_yaml(DEFAULT_CONFIG_PATH)
         user = _read_yaml(self.path) if self.path.exists() else {}
         merged = deep_merge(defaults, user)
+        # CLI overrides (e.g. --source) apply to this run only and are never saved
+        self._overrides = overrides or {}
+        self._pre_override = Config.model_validate(merged).model_dump()
         if overrides:
             merged = deep_merge(merged, overrides)
         self.cfg: Config = Config.model_validate(merged)
@@ -238,10 +241,24 @@ class Settings:
             fn(old, new)
         return new
 
+    def _savable(self) -> dict:
+        data = self.cfg.model_dump()
+        current = Config.model_validate(deep_merge(self._pre_override, self._overrides)).model_dump()
+
+        def undo(d: dict, cur: dict, pre: dict, ov: dict) -> None:
+            for k, v in ov.items():
+                if isinstance(v, dict):
+                    undo(d[k], cur[k], pre[k], v)
+                elif d.get(k) == cur.get(k):   # still the CLI value -> write the file's value
+                    d[k] = pre[k]
+
+        undo(data, current, self._pre_override, self._overrides)
+        return data
+
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".yaml.tmp")
         with open(tmp, "w", encoding="utf-8") as fh:
             fh.write("# NETRAX config (written by NETRAX; comments are in netrax/config.default.yaml)\n")
-            yaml.safe_dump(self.cfg.model_dump(), fh, sort_keys=False, allow_unicode=True)
+            yaml.safe_dump(self._savable(), fh, sort_keys=False, allow_unicode=True)
         os.replace(tmp, self.path)

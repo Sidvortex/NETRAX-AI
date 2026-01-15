@@ -169,4 +169,8 @@ class Pipeline:
         return frame
 
     def status(self) -> dict:
-        return {name: slot.status() for name, slot in self.slots.items()}
+        out = {}
+        for name, slot in self.slots.items():
+            out[name] = slot.status()
+            out[name]["overlay"] = self.overlay.get(name, True)
+        return out
