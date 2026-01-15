@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 
@@ -162,6 +163,115 @@ def cmd_models(args) -> int:
     return rc
 
 
+# bench ---------------------------------------------------------------------
+TARGET_FPS = 12.0
+
+
+def _grab_frames(settings, n: int) -> list:
+    """Grab up to n frames from the configured source into memory."""
+    from netrax.core.source import open_source
+
+    src = open_source(settings.cfg.camera, realtime=False).start()
+    frames, seq, t_end = [], 0, time.time() + 15
+    try:
+        while len(frames) < n and time.time() < t_end:
+            f = src.read(seq, timeout=2.0)
+            if f is None:
+                if src.state in ("ended", "error"):
+                    break
+                continue
+            seq = f.seq
+            frames.append(f.image)
+            if getattr(src, "kind", "") == "image":
+                break
+    finally:
+        src.stop()
+    if not frames:
+        raise SystemExit(f"bench: no frames from source {settings.cfg.camera.source!r} "
+                         f"({src.error or src.state}). Try --source 0 or --source some_video.mp4")
+    return frames
+
+
+def cmd_bench(args) -> int:
+    import numpy as np
+
+    from netrax.config import MODULE_NAMES
+    from netrax.core.pipeline import Pipeline
+    from netrax.detectors import REGISTRY
+
+    if args.all:
+        wanted = [m for m in MODULE_NAMES if m in REGISTRY]
+    else:
+        wanted = [m.strip() for m in args.modules.split(",") if m.strip()]
+    bad = [m for m in wanted if m not in MODULE_NAMES]
+    if bad:
+        print(f"unknown module(s): {', '.join(bad)}; choose from {', '.join(MODULE_NAMES)}", file=sys.stderr)
+        return 2
+    mods = {m: {"enabled": m in wanted} for m in MODULE_NAMES}
+    if args.every_frame:
+        for m in wanted:
+            mods[m]["every_n"] = 1
+        mods.setdefault("face_recog", {})["recheck_every"] = 1
+    settings = _settings(args, {"modules": mods, "outputs": {"mqtt": {"enabled": False}}})
+    wanted = [m for m in wanted if m in REGISTRY]
+
+    print(f"NETRAX bench | source {settings.cfg.camera.source!r} | modules: {', '.join(wanted)}")
+    frames = _grab_frames(settings, args.frames)
+    h, w = frames[0].shape[:2]
+    print(f"captured {len(frames)} frame(s) at {w}x{h}; loading models…")
+    pipe = Pipeline(settings)
+    pipe.sync(wait=True)
+    for name in wanted:
+        slot = pipe.slots[name]
+        if slot.state != "ready":
+            print(f"  {name}: {slot.state} {slot.error or ''}", file=sys.stderr)
+            return 1
+    for f in frames[:5]:                                   # warm-up (first DNN runs are slow)
+        pipe.process(f)
+    for slot in pipe.slots.values():
+        slot.stats.__init__()
+    times, faces, i = [], 0, 0
+    t_end = time.perf_counter() + args.seconds
+    while time.perf_counter() < t_end:
+        f = frames[i % len(frames)]
+        t0 = time.perf_counter()
+        st = pipe.process(f)
+        pipe.draw(f.copy(), st)
+        times.append(time.perf_counter() - t0)
+        faces += len(st.get("face_detect"))
+        i += 1
+    t = np.array(times) * 1000
+    fps = 1000.0 / t.mean()
+    print()
+    print(f"{'module':12} {'runs':>6} {'avg ms':>8} {'p95 ms':>8} {'max FPS':>8}")
+    for name in wanted:
+        s = pipe.slots[name].stats.snapshot()
+        mfps = 1000.0 / s["ms"] if s["ms"] else float("inf")
+        print(f"{name:12} {s['runs']:6d} {s['ms']:8.2f} {s['p95_ms']:8.2f} {mfps:8.1f}")
+    print(f"{'pipeline':12} {i:6d} {t.mean():8.2f} {np.percentile(t, 95):8.2f} {fps:8.1f}   (all modules + overlay)")
+    print()
+    if "face_detect" in wanted and faces == 0:
+        print("note: no faces were found in these frames"
+              + (", so face_recog did no work" if "face_recog" in wanted else "") + ". Sit in front of the camera.")
+    verdict = "PASS" if fps >= TARGET_FPS else "FAIL"
+    print(f"{verdict}: {fps:.1f} FPS {'>=' if fps >= TARGET_FPS else '<'} {TARGET_FPS:.0f} FPS target "
+          f"({os.cpu_count()} CPU threads, {_cpu_name()})")
+    return 0 if fps >= TARGET_FPS else 1
+
+
+def _cpu_name() -> str:
+    try:
+        with open("/proc/cpuinfo") as fh:
+            for line in fh:
+                if line.startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    import platform
+
+    return platform.processor() or "unknown CPU"
+
+
 # parser --------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="netrax", description="NETRAX local vision hub")
@@ -185,6 +295,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--json", action="store_true", help="print one JSON line per processed frame")
     sp.add_argument("--duration", type=float, help="stop after N seconds")
     sp.set_defaults(fn=cmd_run)
+
+    sp = sub.add_parser("bench", help="measure FPS per module on this machine")
+    source_arg(sp)
+    sp.add_argument("--modules", default="face_detect,face_recog", help="comma list (default: face_detect,face_recog)")
+    sp.add_argument("--all", action="store_true", help="bench every module")
+    sp.add_argument("--every-frame", action="store_true", help="worst case: run every module (and recognition) on every frame")
+    sp.add_argument("--frames", type=int, default=60, help="frames to capture first (default 60)")
+    sp.add_argument("--seconds", type=float, default=10.0, help="how long to process (default 10)")
+    sp.set_defaults(fn=cmd_bench)
 
     sp = sub.add_parser("models", help="list models, or download them")
     sp.add_argument("--download", action="store_true", help="download models of enabled modules")
