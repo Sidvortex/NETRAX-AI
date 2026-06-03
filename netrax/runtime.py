@@ -6,16 +6,23 @@ import logging
 
 from netrax.config import Settings
 from netrax.core.engine import Engine
-from netrax.core.pipeline import DetectorFactory, default_factory
+from netrax.core.pipeline import DetectorFactory
 from netrax.core.source import FrameSource
+from netrax.db.store import Store
+from netrax.detectors import load_class
 
 log = logging.getLogger("netrax")
 
 
 class Runtime:
     def __init__(self, settings: Settings, source: FrameSource | None = None,
-                 factory: DetectorFactory = default_factory, realtime: bool = True):
+                 factory: DetectorFactory | None = None, realtime: bool = True):
         self.settings = settings
+        self.store = Store(settings.data_dir)
+        self.services = {"store": self.store}
+        if factory is None:
+            def factory(name: str, s: Settings):
+                return load_class(name)(s, self.services)
         self.engine = Engine(settings, source=source, factory=factory, realtime=realtime)
 
     def start(self) -> "Runtime":
@@ -25,6 +32,7 @@ class Runtime:
 
     def stop(self) -> None:
         self.engine.stop()
+        self.store.close()
 
     def status(self) -> dict:
         return self.engine.status()
