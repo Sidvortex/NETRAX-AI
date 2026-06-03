@@ -29,8 +29,9 @@ class Detector:
     model_keys: ClassVar[tuple[str, ...]] = ()
     requires: ClassVar[tuple[str, ...]] = ()   # modules whose results this one reads
 
-    def __init__(self, settings: "Settings"):
+    def __init__(self, settings: "Settings", services: dict | None = None):
         self.settings = settings
+        self.services = services or {}   # shared objects, e.g. {"store": Store}
 
     @property
     def cfg(self):

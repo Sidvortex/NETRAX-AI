@@ -60,6 +60,7 @@ class Face(Result):
 @dataclass
 class Identity(Result):
     kind: ClassVar[str] = "identity"
+    _private: ClassVar[tuple[str, ...]] = ("bbox",)
     track_id: int
     name: str                   # person name, "unknown", or "..." while still deciding
     role: str                   # owner | allowed | unknown
@@ -67,6 +68,7 @@ class Identity(Result):
     verified: bool              # confidence >= threshold and the vote agrees
     person_id: int | None = None
     attempts: int = 0           # how many recognitions this track has had
+    bbox: np.ndarray | None = None  # face box, for drawing only
 
 
 @dataclass
