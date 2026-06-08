@@ -11,6 +11,7 @@ import importlib
 
 REGISTRY: dict[str, str] = {
     "face_detect": "netrax.detectors.face_detect:FaceDetector",
+    "face_recog": "netrax.detectors.face_recog:FaceRecognizer",
 }
 
 # draw order: big/background things first, face labels last so they stay readable
