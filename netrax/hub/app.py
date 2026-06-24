@@ -14,11 +14,17 @@ from pydantic import BaseModel
 
 from netrax import __version__
 from netrax.config import MODULE_NAMES
+from netrax.hub import people
 from netrax.runtime import Runtime
 
 log = logging.getLogger("netrax.hub")
 STATIC = Path(__file__).with_name("static")
-PAGES = {"/": "index.html"}
+PAGES = {"/": "index.html", "/people": "people.html"}
+
+
+class Toggle(BaseModel):
+    enabled: bool | None = None
+    overlay: bool | None = None
 
 
 def create_app(rt: Runtime, start_engine: bool = True) -> FastAPI:
@@ -38,6 +44,7 @@ def create_app(rt: Runtime, start_engine: bool = True) -> FastAPI:
     for route, page in PAGES.items():
         app.add_api_route(route, _page(page), include_in_schema=False)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    app.include_router(people.router)
 
     @app.get("/stream.mjpg")
     async def stream(request: Request, overlay: int = 1):
@@ -72,10 +79,6 @@ def create_app(rt: Runtime, start_engine: bool = True) -> FastAPI:
     def state():
         st = rt.engine.state
         return st.to_dict() if st else {}
-
-    class Toggle(BaseModel):
-        enabled: bool | None = None
-        overlay: bool | None = None
 
     @app.post("/api/modules/{name}")
     def toggle_module(name: str, body: Toggle):
