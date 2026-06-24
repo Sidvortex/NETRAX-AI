@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRAX · People</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js"></script>
+  <style>
+    .enroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; }
+    @media (max-width: 800px) { .enroll { grid-template-columns: 1fr; } }
+    .progress { height: 10px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
+    .progress > i { display: block; height: 100%; width: 0; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); transition: width .2s; }
+    .hint { font: 13px var(--mono); color: var(--yellow); min-height: 1.4em; }
+    .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+    .card .cover { aspect-ratio: 1; background: #000 center/cover no-repeat; position: relative; }
+    .card .cover .tag { position: absolute; left: 10px; top: 10px; background: rgba(0,0,0,.7); }
+    .card .body { padding: 12px; display: grid; gap: 8px; }
+    .card .name { font-size: 16px; font-weight: 600; display: flex; gap: 6px; align-items: center; justify-content: space-between; }
+    .card .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .thumbs .t { position: relative; aspect-ratio: 1; background: #000 center/cover; border-radius: 6px; }
+    .thumbs .t button { position: absolute; right: 2px; top: 2px; border: 0; border-radius: 4px; background: rgba(0,0,0,.75); color: var(--red); cursor: pointer; padding: 0 5px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="panel enroll">
+    <div>
+      <div class="panel-head"><h2>Enroll a person</h2></div>
+      <form id="enroll-form" class="row" autocomplete="off">
+        <label class="field" style="flex:1 1 160px"><span>Name</span><input type="text" id="e-name" required maxlength="64" placeholder="e.g. Mind"></label>
+        <label class="field"><span>Role</span>
+          <select id="e-role"><option value="owner">owner</option><option value="allowed" selected>allowed</option><option value="unknown">unknown</option></select></label>
+        <label class="field" style="width:90px"><span>Frames</span><input type="number" id="e-frames" min="3" max="30" value="10"></label>
+        <button class="btn primary" id="e-start">Start</button>
+      </form>
+      <p class="muted" style="font-size:13px">Stand alone in front of the camera, face it, and turn your head slowly while NETRAX picks ~10 sharp frames.</p>
+      <div id="e-run" hidden>
+        <div class="progress"><i id="e-bar"></i></div>
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <span class="mono" id="e-count"></span>
+          <button class="btn small danger" id="e-cancel">Cancel</button>
+        </div>
+        <div class="hint" id="e-hint"></div>
+      </div>
+    </div>
+    <div class="viewport"><img id="e-video" alt="camera preview"><div class="offline">camera offline</div></div>
+  </div>
+
+  <div class="people" id="people"></div>
+</main>
+
+<script>
+"use strict";
+const { el, api, toast, fmtTime } = NX;
+const form = document.getElementById("enroll-form");
+const run = document.getElementById("e-run");
+let addTo = null;   // name when adding photos to an existing person
+
+// camera preview only while this page is open
+const vid = document.getElementById("e-video");
+vid.src = "/stream.mjpg";
+vid.addEventListener("error", () => { vid.parentElement.classList.add("down"); setTimeout(() => vid.src = "/stream.mjpg?t=" + Date.now(), 2000); });
+vid.addEventListener("load", () => vid.parentElement.classList.remove("down"));
+
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = document.getElementById("e-name").value.trim();
+  try {
+    await api("/api/enroll", { json: {
+      name, role: document.getElementById("e-role").value,
+      frames: +document.getElementById("e-frames").value, add: addTo === name } });
+    poll();
+  } catch (err) { toast(err.message, true); }
+});
+document.getElementById("e-cancel").addEventListener("click", () => api("/api/enroll", { method: "DELETE" }).then(poll));
+
+let timer = null, lastState = null;
+async function poll() {
+  clearTimeout(timer);
+  const s = await api("/api/enroll").catch(() => ({ state: "idle" }));
+  const running = s.state === "running";
+  run.hidden = s.state === "idle";
+  document.getElementById("e-start").disabled = running;
+  if (s.target) {
+    document.getElementById("e-bar").style.width = `${100 * s.captured / s.target}%`;
+    document.getElementById("e-count").textContent = `${s.name}: ${s.captured}/${s.target}  (${Math.max(0, s.timeout_s - s.elapsed_s).toFixed(0)}s left)`;
+  }
+  document.getElementById("e-hint").textContent =
+    running ? s.hint : s.state === "done" ? `✓ ${s.name} enrolled` : s.state === "failed" ? `✗ ${s.error}` : s.state === "cancelled" ? "cancelled" : "";
+  if (lastState === "running" && !running) {
+    if (s.state === "done") { toast(`${s.name} enrolled`); form.reset(); addTo = null; }
+    loadPeople();
+  }
+  lastState = s.state;
+  if (running) timer = setTimeout(poll, 300);
+}
+
+// people grid ---------------------------------------------------------------
+const grid = document.getElementById("people");
+async function loadPeople() {
+  const people = await api("/api/people");
+  if (!people.length) {
+    grid.replaceChildren(el("div", { class: "panel empty" }, "Nobody enrolled yet. Start with yourself as owner."));
+    return;
+  }
+  grid.replaceChildren(...people.map(card));
+}
+
+function card(p) {
+  const thumbs = el("div", { class: "thumbs", hidden: true });
+  const roleSel = el("select", { onchange: e => patch(p, { role: e.target.value }) },
+    ["owner", "allowed", "unknown"].map(r => el("option", { value: r, selected: r === p.role }, r)));
+  return el("div", { class: "card" },
+    el("div", { class: "cover", style: p.cover_url ? `background-image:url('${p.cover_url}')` : "" },
+      el("span", { class: `tag role-${p.role}` }, p.role)),
+    el("div", { class: "body" },
+      el("div", { class: "name" }, p.name,
+        el("button", { class: "btn small", title: "rename", onclick: () => rename(p) }, "✎")),
+      el("div", { class: "muted", style: "font-size:12px" },
+        `${p.n_faces} face${p.n_faces === 1 ? "" : "s"} · last seen ${p.last_seen ? fmtTime(p.last_seen) : "never"}`),
+      el("div", { class: "row" }, roleSel),
+      el("div", { class: "actions" },
+        el("button", { class: "btn small", onclick: () => togglePhotos(p, thumbs) }, "Photos"),
+        el("button", { class: "btn small", onclick: () => addPhotos(p) }, "Add photos"),
+        el("button", { class: "btn small danger", onclick: () => remove(p) }, "Delete")),
+      thumbs));
+}
+
+async function patch(p, body) {
+  try { await api(`/api/people/${p.id}`, { method: "PATCH", json: body }); toast("saved"); }
+  catch (e) { toast(e.message, true); }
+  loadPeople();
+}
+function rename(p) {
+  const name = prompt("New name", p.name);
+  if (name && name.trim() !== p.name) patch(p, { name: name.trim() });
+}
+async function remove(p) {
+  if (!confirm(`Delete ${p.name} and all their face photos?`)) return;
+  await api(`/api/people/${p.id}`, { method: "DELETE" }).catch(e => toast(e.message, true));
+  loadPeople();
+}
+function addPhotos(p) {
+  addTo = p.name;
+  document.getElementById("e-name").value = p.name;
+  document.getElementById("e-role").value = p.role;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  toast(`press Start to add photos to ${p.name}`);
+}
+function togglePhotos(p, box) {
+  box.hidden = !box.hidden;
+  if (!box.hidden) renderPhotos(p, box);
+}
+async function renderPhotos(p, box) {
+  const photos = await api(`/api/people/${p.id}/photos`);
+  box.replaceChildren(...photos.filter(ph => ph.url).map(ph => el("div", { class: "t", style: `background-image:url('${ph.url}')` },
+    el("button", { title: "delete this photo", onclick: async () => {
+      await api(`/api/photos/${ph.id}`, { method: "DELETE" }).catch(e => toast(e.message, true));
+      renderPhotos(p, box);
+    } }, "×"))));
+}
+
+loadPeople();
+poll();
+</script>
+</body>
+</html>
