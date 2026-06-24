@@ -135,6 +135,126 @@ def _summary_line(rt) -> str:
     return " | ".join(parts)
 
 
+# enroll / people -------------------------------------------------------------
+def cmd_enroll(args) -> int:
+    from pathlib import Path
+
+    import cv2
+
+    from netrax.runtime import Runtime
+
+    settings = _settings(args, {"modules": {"face_detect": {"enabled": True}}})
+    if args.from_dir:
+        from netrax.core.enroll import Enroller
+        from netrax.db.store import Store
+        from netrax.detectors.face_detect import FaceDetector
+
+        files = sorted(p for p in Path(args.from_dir).expanduser().iterdir()
+                       if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"})
+        if not files:
+            print(f"no images in {args.from_dir}", file=sys.stderr)
+            return 1
+        det = FaceDetector(settings)
+        det.load()
+        store = Store(settings.data_dir)
+        try:
+            pid, skipped = Enroller(settings, store).enroll_images(args.name, args.role, files, det)
+        except ValueError as e:
+            print(f"enroll failed: {e}", file=sys.stderr)
+            return 1
+        for msg in skipped:
+            print(f"  skipped {msg}")
+        p = store.get_person(pid)
+        print(f"enrolled {p['name']} ({p['role']}) from {len(files) - len(skipped)} image(s)")
+        return 0
+
+    rt = Runtime(settings).start()
+    try:
+        try:
+            sess = rt.enroller.start(args.name, args.role, target=args.frames, timeout_s=args.timeout,
+                                     add_to_existing=args.add)
+        except ValueError as e:
+            print(f"enroll: {e} (use --add to add more photos to an existing person)", file=sys.stderr)
+            return 1
+        print(f"enrolling {sess.name} as {sess.role}: look at the camera and turn your head slowly")
+        last = ""
+        while sess.state == "running":
+            if rt.engine.source and rt.engine.source.state == "error":
+                print(f"\ncamera error: {rt.engine.source.error}", file=sys.stderr)
+                rt.enroller.cancel()
+                return 1
+            st = sess.status()
+            bar = "#" * st["captured"] + "-" * (st["target"] - st["captured"])
+            line = f"\r  [{bar}] {st['captured']}/{st['target']}  {st['hint']:<45}"
+            if line != last:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                last = line
+            if args.show:
+                _, jpg = rt.engine.jpeg()
+                if jpg is not None:
+                    import numpy as np
+
+                    cv2.imshow("NETRAX enroll (q to cancel)", cv2.imdecode(np.frombuffer(jpg, np.uint8), 1))
+                if cv2.waitKey(30) & 0xFF in (ord("q"), 27):
+                    rt.enroller.cancel()
+            else:
+                time.sleep(0.1)
+        print()
+        if sess.state == "done":
+            print(f"enrolled {sess.name} ({sess.role}) with {len(sess.captures)} face images")
+            return 0
+        print(f"enroll {sess.state}: {sess.error or ''}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        rt.enroller.cancel()
+        print("\ncancelled")
+        return 130
+    finally:
+        rt.stop()
+        if args.show:
+            cv2.destroyAllWindows()
+
+
+def cmd_people(args) -> int:
+    from netrax.db.store import Store
+
+    settings = _settings(args)
+    store = Store(settings.data_dir)
+
+    def find(name):
+        p = store.find_person(name)
+        if p is None:
+            raise SystemExit(f"no person called {name!r}")
+        return p
+
+    try:
+        if args.rename:
+            p = store.update_person(find(args.rename[0])["id"], name=args.rename[1])
+            print(f"renamed to {p['name']}")
+        elif args.role:
+            p = store.update_person(find(args.role[0])["id"], role=args.role[1])
+            print(f"{p['name']} is now {p['role']}")
+        elif args.delete:
+            p = find(args.delete)
+            if not args.yes and input(f"delete {p['name']} and all their face photos? [y/N] ").lower() != "y":
+                return 1
+            store.delete_person(p["id"])
+            print(f"deleted {p['name']}")
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    people = store.list_people()
+    if not people:
+        print("no people enrolled yet. Try: netrax enroll --name YourName --role owner")
+        return 0
+    print(f"{'id':>3}  {'name':20} {'role':8} {'faces':>5}  last seen")
+    for p in people:
+        seen = time.strftime("%Y-%m-%d %H:%M", time.localtime(p["last_seen"])) if p["last_seen"] else "-"
+        print(f"{p['id']:>3}  {p['name']:20} {p['role']:8} {p['n_faces']:>5}  {seen}")
+    return 0
+
+
 # models --------------------------------------------------------------------
 def cmd_models(args) -> int:
     from netrax import models
@@ -302,6 +422,25 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--json", action="store_true", help="print one JSON line per processed frame")
     sp.add_argument("--duration", type=float, help="stop after N seconds")
     sp.set_defaults(fn=cmd_run)
+
+    sp = sub.add_parser("enroll", help="add a person from the camera (or a folder of photos)")
+    source_arg(sp)
+    sp.add_argument("--name", required=True)
+    sp.add_argument("--role", default="allowed", choices=["owner", "allowed", "unknown"])
+    sp.add_argument("--frames", type=int, default=10, help="good frames to capture (default 10)")
+    sp.add_argument("--timeout", type=float, default=60, help="give up after N seconds")
+    sp.add_argument("--add", action="store_true", help="add photos to an existing person")
+    sp.add_argument("--from-dir", help="enroll from the photos in this folder instead of the camera")
+    sp.add_argument("--show", action="store_true", help="show the camera in a window while enrolling")
+    sp.set_defaults(fn=cmd_enroll)
+
+    sp = sub.add_parser("people", help="list people; rename, change role or delete")
+    g = sp.add_mutually_exclusive_group()
+    g.add_argument("--rename", nargs=2, metavar=("OLD", "NEW"))
+    g.add_argument("--role", nargs=2, metavar=("NAME", "ROLE"))
+    g.add_argument("--delete", metavar="NAME")
+    sp.add_argument("-y", "--yes", action="store_true", help="don't ask before deleting")
+    sp.set_defaults(fn=cmd_people)
 
     sp = sub.add_parser("bench", help="measure FPS per module on this machine")
     source_arg(sp)
