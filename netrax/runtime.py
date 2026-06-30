@@ -7,6 +7,7 @@ import logging
 from netrax.config import Settings
 from netrax.core.engine import Engine
 from netrax.core.enroll import Enroller
+from netrax.core.events import EventBus
 from netrax.core.pipeline import DetectorFactory
 from netrax.core.source import FrameSource
 from netrax.db.store import Store
@@ -26,7 +27,8 @@ class Runtime:
                 return load_class(name)(s, self.services)
         self.engine = Engine(settings, source=source, factory=factory, realtime=realtime)
         self.enroller = Enroller(settings, self.store)
-        self.engine.hooks.append(self.enroller)
+        self.events = EventBus(settings, self.store)
+        self.engine.hooks += [self.enroller, self.events]
 
     def start(self) -> "Runtime":
         self.settings.data_dir.mkdir(parents=True, exist_ok=True)
