@@ -72,11 +72,9 @@ def test_gestures_fire_on_change(bus):
 
 def test_objects_ignore_and_cooldown(bus):
     objs = [Detection(np.zeros(4), "cup", 41, 0.8), Detection(np.zeros(4), "person", 0, 0.9)]
-    for t in (0, 5, 10):
+    for t in range(0, 101, 5):                                   # stays in view: one event
         bus(IMG, frame_state(t, objects=objs, ran={"objects"}))
     assert [(e["type"], e["label"]) for e in bus.got] == [("object", "cup")]
-    bus(IMG, frame_state(100, objects=objs, ran={"objects"}))   # still in view: no new event
-    assert len(bus.got) == 1
     bus(IMG, frame_state(200, objects=[], ran={"objects"}))
     bus(IMG, frame_state(300, objects=objs, ran={"objects"}))   # came back after cooldown
     assert len(bus.got) == 2
