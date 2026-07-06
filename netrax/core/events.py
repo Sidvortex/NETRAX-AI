@@ -50,7 +50,8 @@ class EventBus:
     # emit ------------------------------------------------------------------------
     def emit(self, type: str, label: str, frame: np.ndarray | None = None, box=None, snapshot: bool = False,
              **kw) -> dict:
-        ts = kw.pop("ts", None) or time.time()
+        ts = kw.pop("ts", None)
+        ts = time.time() if ts is None else ts
         snap = self._snapshot(frame, box, type, label, ts) if snapshot and frame is not None else None
         eid = self.store.add_event(type, label, ts=ts, snapshot_path=snap, **kw)
         evt = {"id": eid, "ts": round(ts, 3), "type": type, "label": label,
