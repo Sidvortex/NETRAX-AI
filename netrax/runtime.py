@@ -12,6 +12,7 @@ from netrax.core.pipeline import DetectorFactory
 from netrax.core.source import FrameSource
 from netrax.db.store import Store
 from netrax.detectors import load_class
+from netrax.outputs.jsonl import JsonlWriter
 
 log = logging.getLogger("netrax")
 
@@ -29,6 +30,7 @@ class Runtime:
         self.enroller = Enroller(settings, self.store)
         self.events = EventBus(settings, self.store)
         self.engine.hooks += [self.enroller, self.events]
+        self.events.on_event(JsonlWriter(settings))
 
     def start(self) -> "Runtime":
         self.settings.data_dir.mkdir(parents=True, exist_ok=True)
