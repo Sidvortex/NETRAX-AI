@@ -14,12 +14,12 @@ from pydantic import BaseModel
 
 from netrax import __version__
 from netrax.config import MODULE_NAMES
-from netrax.hub import people
+from netrax.hub import events, people
 from netrax.runtime import Runtime
 
 log = logging.getLogger("netrax.hub")
 STATIC = Path(__file__).with_name("static")
-PAGES = {"/": "index.html", "/people": "people.html"}
+PAGES = {"/": "index.html", "/people": "people.html", "/events": "events.html"}
 
 
 class Toggle(BaseModel):
@@ -45,6 +45,7 @@ def create_app(rt: Runtime, start_engine: bool = True) -> FastAPI:
         app.add_api_route(route, _page(page), include_in_schema=False)
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
     app.include_router(people.router)
+    app.include_router(events.router)
 
     @app.get("/stream.mjpg")
     async def stream(request: Request, overlay: int = 1):

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRAX · Events</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js"></script>
+  <style>
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    .types { display: flex; gap: 6px; flex-wrap: wrap; }
+    .types button { border: 1px solid var(--line); background: none; border-radius: 99px; padding: 5px 12px; cursor: pointer; color: var(--muted); }
+    .types button.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan); }
+    .types button .n { font: 11px var(--mono); opacity: .75; margin-left: 4px; }
+    .day { margin: 18px 0 8px; font: 12px var(--mono); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+    .ev { display: grid; grid-template-columns: 70px 92px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+          padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); margin-bottom: 6px; }
+    .ev .t { font: 12px var(--mono); color: var(--muted); }
+    .ev .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ev img { width: 72px; height: 48px; object-fit: cover; border-radius: 6px; cursor: zoom-in; border: 1px solid var(--line); }
+    @media (max-width: 600px) { .ev { grid-template-columns: 56px 1fr auto; } .ev .tagcell { display: none; } }
+    .type-seen { color: var(--green); } .type-unknown { color: var(--red); } .type-gesture { color: var(--magenta); }
+    .type-object { color: var(--cyan); } .type-posture { color: var(--yellow); } .type-system { color: var(--muted); }
+    #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.88); display: none; place-items: center; z-index: 30; cursor: zoom-out; padding: 16px; }
+    #lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+    #lightbox.show { display: grid; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="panel">
+    <div class="filters">
+      <div class="types" id="types"></div>
+      <label class="field"><span>From</span><input type="date" id="from"></label>
+      <label class="field"><span>To</span><input type="date" id="to"></label>
+      <label class="field" style="flex:1 1 140px"><span>Search</span><input type="text" id="q" placeholder="name, gesture, object…"></label>
+      <label class="row muted" style="align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="live" checked> live</label>
+      <button class="btn small danger" id="clear">Clear all</button>
+    </div>
+  </div>
+  <div id="timeline"></div>
+  <div style="text-align:center;margin-top:12px"><button class="btn" id="more" hidden>Load more</button></div>
+  <div id="lightbox"><img alt="snapshot"></div>
+</main>
+
+<script>
+"use strict";
+const { el, api, toast } = NX;
+const TYPES = { seen: "Seen", unknown: "Unknown", gesture: "Gestures", object: "Objects", posture: "Posture" };
+const ICON = { seen: "👤", unknown: "⚠", gesture: "✋", object: "▣", posture: "🧍", system: "•" };
+const active = new Set();
+let items = [], total = 0;
+
+const typesBox = document.getElementById("types");
+function renderTypes(counts = {}) {
+  typesBox.replaceChildren(...Object.entries(TYPES).map(([t, name]) =>
+    el("button", { class: active.has(t) ? "on" : "", onclick: () => { active.has(t) ? active.delete(t) : active.add(t); renderTypes(counts); load(); } },
+      name, el("span", { class: "n" }, counts[t] ?? ""))));
+}
+
+function params(offset) {
+  const p = new URLSearchParams({ limit: 50, offset });
+  if (active.size) p.set("type", [...active].join(","));
+  const f = document.getElementById("from").value, to = document.getElementById("to").value, q = document.getElementById("q").value.trim();
+  if (f) p.set("date_from", f);
+  if (to) p.set("date_to", to);
+  if (q) p.set("q", q);
+  return p;
+}
+
+async function load(append = false) {
+  try {
+    const r = await api("/api/events?" + params(append ? items.length : 0));
+    items = append ? items.concat(r.items) : r.items;
+    total = r.total;
+    render();
+  } catch (e) { toast(e.message, true); }
+}
+
+function describe(e) {
+  const d = e.data || {};
+  if (e.type === "seen") return [el("b", {}, e.label), d.role ? el("span", { class: `tag role-${d.role}`, style: "margin-left:8px" }, d.role) : ""];
+  if (e.type === "unknown") return [el("b", {}, "Unknown face"), el("span", { class: "muted" }, ` · track #${e.track_id}`)];
+  if (e.type === "gesture") return [el("b", {}, e.label.replace("_", " ")), d.hand ? el("span", { class: "muted" }, ` · ${d.hand} hand`) : ""];
+  if (e.type === "object") return [el("b", {}, e.label), d.count > 1 ? el("span", { class: "muted" }, ` ×${d.count}`) : ""];
+  if (e.type === "posture") return [el("b", {}, e.label), d.for_s ? el("span", { class: "muted" }, ` for ${d.for_s}s`) : ""];
+  return [e.label];
+}
+
+function render() {
+  const tl = document.getElementById("timeline");
+  if (!items.length) { tl.replaceChildren(el("div", { class: "panel empty", style: "margin-top:14px" }, "No events match.")); }
+  else {
+    const out = [];
+    let day = "";
+    for (const e of items) {
+      const d = new Date(e.ts * 1000);
+      const key = d.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+      if (key !== day) { day = key; out.push(el("div", { class: "day" }, key)); }
+      out.push(el("div", { class: "ev" },
+        el("span", { class: "t" }, d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })),
+        el("span", { class: `tagcell type-${e.type}` }, ICON[e.type] || "", " ", e.type),
+        el("span", { class: "what" }, ...describe(e),
+          e.confidence !== null && e.confidence !== undefined ? el("span", { class: "muted mono", style: "margin-left:8px;font-size:12px" }, `${Math.round(e.confidence * 100)}%`) : ""),
+        e.snapshot_url ? el("img", { src: e.snapshot_url, loading: "lazy", alt: "snapshot", onclick: () => zoom(e.snapshot_url) }) : el("span")));
+    }
+    tl.replaceChildren(...out);
+  }
+  const more = document.getElementById("more");
+  more.hidden = items.length >= total;
+  more.textContent = `Load more (${total - items.length} left)`;
+}
+
+function zoom(src) {
+  const lb = document.getElementById("lightbox");
+  lb.querySelector("img").src = src;
+  lb.classList.add("show");
+}
+document.getElementById("lightbox").addEventListener("click", e => e.currentTarget.classList.remove("show"));
+document.getElementById("more").addEventListener("click", () => load(true));
+for (const id of ["from", "to"]) document.getElementById(id).addEventListener("change", () => load());
+let qTimer;
+document.getElementById("q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(load, 300); });
+document.getElementById("clear").addEventListener("click", async () => {
+  if (!confirm("Delete ALL events and their snapshots?")) return;
+  const r = await api("/api/events", { method: "DELETE" });
+  toast(`deleted ${r.deleted} events`);
+  load();
+});
+
+async function refreshCounts() {
+  try { renderTypes((await api("/api/events/summary")).today); } catch {}
+}
+setInterval(() => {
+  if (document.getElementById("live").checked && items.length <= 50 && !document.getElementById("to").value) { load(); refreshCounts(); }
+}, 5000);
+renderTypes();
+refreshCounts();
+load();
+</script>
+</body>
+</html>
