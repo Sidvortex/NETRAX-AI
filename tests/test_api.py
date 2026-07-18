@@ -26,7 +26,7 @@ def client(settings, frame):
 
 
 def test_pages_and_static(client):
-    for path in ("/", "/people", "/static/app.js", "/static/style.css"):
+    for path in ("/", "/people", "/events", "/static/app.js", "/static/style.css"):
         assert client.get(path).status_code == 200
 
 
@@ -82,3 +82,24 @@ def test_enroll_flow(client, monkeypatch):
     assert r["state"] == "running" and r["target"] == 3
     assert client.post("/api/enroll", json={"name": "Other"}).status_code == 422   # one at a time
     assert client.delete("/api/enroll").json()["state"] == "cancelled"
+
+
+def test_events_endpoints(client):
+    from datetime import datetime
+
+    bus = client.rt.events
+    bus.emit("gesture", "peace", ts=datetime(2026, 7, 3, 10, 0).timestamp())
+    bus.emit("object", "cup", ts=datetime(2026, 7, 4, 23, 59).timestamp())
+    bus.emit("gesture", "fist", ts=datetime(2026, 7, 5, 0, 1).timestamp())
+    r = client.get("/api/events").json()
+    assert r["total"] == 3 and r["items"][0]["label"] == "fist"
+    r = client.get("/api/events", params={"type": "gesture"}).json()
+    assert [e["label"] for e in r["items"]] == ["fist", "peace"]
+    r = client.get("/api/events", params={"date_from": "2026-07-04", "date_to": "2026-07-04"}).json()
+    assert [e["label"] for e in r["items"]] == ["cup"]
+    assert client.get("/api/events", params={"q": "pea"}).json()["total"] == 1
+    assert client.get("/api/events", params={"type": "bogus"}).status_code == 422
+    assert client.get("/api/events", params={"date_from": "07/04"}).status_code == 422
+    assert len(client.get("/api/events/recent").json()) == 3
+    assert client.get("/api/events/summary").json()["all"] == {"gesture": 2, "object": 1}
+    assert client.delete("/api/events").json()["deleted"] == 3
