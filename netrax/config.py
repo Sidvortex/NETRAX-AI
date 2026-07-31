@@ -161,6 +161,41 @@ class Config(_Strict):
 MODULE_NAMES = tuple(ModulesCfg.model_fields)
 
 
+def field_choices(model: type[BaseModel] = Config, prefix: str = "") -> dict[str, list]:
+    """Dotted path -> allowed values, for every Literal field (used by the Settings page)."""
+    from typing import get_args, get_origin
+
+    out: dict[str, list] = {}
+    for name, f in model.model_fields.items():
+        path = f"{prefix}{name}"
+        ann = f.annotation
+        if isinstance(ann, type) and issubclass(ann, BaseModel):
+            out.update(field_choices(ann, path + "."))
+        elif get_origin(ann) is Literal:
+            out[path] = list(get_args(ann))
+    return out
+
+
+def field_limits(model: type[BaseModel] = Config, prefix: str = "") -> dict[str, dict]:
+    """Dotted path -> {min, max} from Field(ge=..., le=...) constraints."""
+    out: dict[str, dict] = {}
+    for name, f in model.model_fields.items():
+        path = f"{prefix}{name}"
+        ann = f.annotation
+        if isinstance(ann, type) and issubclass(ann, BaseModel):
+            out.update(field_limits(ann, path + "."))
+            continue
+        lim = {}
+        for m in f.metadata:
+            for attr, key in (("ge", "min"), ("gt", "min"), ("le", "max"), ("lt", "max")):
+                v = getattr(m, attr, None)
+                if v is not None:
+                    lim[key] = v
+        if lim:
+            out[path] = lim
+    return out
+
+
 def deep_merge(base: dict, override: dict) -> dict:
     """Return a copy of `base` with `override` merged in (dicts merge, everything else replaces)."""
     out = copy.deepcopy(base)
