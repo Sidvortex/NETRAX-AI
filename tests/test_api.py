@@ -26,7 +26,7 @@ def client(settings, frame):
 
 
 def test_pages_and_static(client):
-    for path in ("/", "/people", "/events", "/static/app.js", "/static/style.css"):
+    for path in ("/", "/people", "/events", "/settings", "/static/app.js", "/static/style.css"):
         assert client.get(path).status_code == 200
 
 
@@ -103,3 +103,24 @@ def test_events_endpoints(client):
     assert len(client.get("/api/events/recent").json()) == 3
     assert client.get("/api/events/summary").json()["all"] == {"gesture": 2, "object": 1}
     assert client.delete("/api/events").json()["deleted"] == 3
+
+
+def test_config_endpoints(client):
+    r = client.get("/api/config").json()
+    assert r["config"]["modules"]["face_recog"]["threshold"] == 0.363
+    assert r["choices"]["modules.pose.style"] == ["skeleton", "dance"]
+    assert r["limits"]["hub.port"] == {"min": 1, "max": 65535}
+    r = client.put("/api/config", json={"modules": {"face_recog": {"threshold": 0.4}}})
+    assert r.status_code == 200 and r.json()["config"]["modules"]["face_recog"]["threshold"] == 0.4
+    assert client.rt.settings.path.exists()
+    bad = client.put("/api/config", json={"modules": {"face_recog": {"threshold": 3}}})
+    assert bad.status_code == 422 and "threshold" in str(bad.json())
+    assert client.put("/api/config", json={"camera": {"nope": 1}}).status_code == 422
+    assert client.rt.settings.cfg.modules.face_recog.threshold == 0.4
+
+
+def test_models_and_cameras(client):
+    ms = client.get("/api/models").json()
+    assert {m["key"] for m in ms} >= {"yunet", "sface", "nanodet"}
+    assert all(m["license"] in ("MIT", "Apache-2.0") for m in ms)
+    assert isinstance(client.get("/api/cameras").json(), list)
