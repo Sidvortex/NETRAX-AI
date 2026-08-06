@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NETRAX · Settings</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js"></script>
+  <style>
+    .sections { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; margin-top: 14px; }
+    .sections .panel + .panel { margin-top: 0; }
+    .kv { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 8px 12px; align-items: center; }
+    .kv > label { font-size: 13px; }
+    .kv > label small { display: block; color: var(--muted); font-size: 11px; line-height: 1.3; }
+    .kv input[type=text], .kv input[type=number], .kv select { width: 100%; }
+    .kv .changed { outline: 1px solid var(--yellow); }
+    .sub { grid-column: 1 / -1; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+           font: 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--cyan); display: flex; justify-content: space-between; }
+    .savebar { position: sticky; top: 58px; z-index: 5; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 500; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="panel savebar">
+    <div><h2>Settings</h2><div class="muted mono" style="font-size:11px" id="path"></div></div>
+    <div class="row" style="align-items:center">
+      <span class="muted" id="dirty"></span>
+      <button class="btn" id="revert" disabled>Revert</button>
+      <button class="btn primary" id="save" disabled>Save to config.yaml</button>
+    </div>
+  </div>
+  <div class="sections" id="sections"></div>
+  <div class="panel" style="margin-top:14px">
+    <div class="panel-head"><h2>Models</h2><span class="muted" style="font-size:12px">downloaded on first use into models/</span></div>
+    <div style="overflow-x:auto"><table id="models"></table></div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const { el, api, toast, MODULE_LABELS } = NX;
+
+const HELP = {
+  "camera.source": "webcam index, MJPEG/RTSP URL, or video file",
+  "camera.mirror": "flip horizontally (selfie view)",
+  "camera.loop_file": "restart video files at the end",
+  "hub.host": "0.0.0.0 = phone on WiFi can connect; 127.0.0.1 = laptop only (restart)",
+  "hub.port": "restart needed",
+  "hub.stream_fps": "max FPS sent to browsers",
+  "every_n": "run every Nth frame",
+  "modules.face_detect.max_side": "downscale before detecting (px)",
+  "modules.face_detect.min_face": "ignore smaller faces (px)",
+  "modules.face_recog.threshold": "cosine similarity for a match (SFace: 0.363)",
+  "modules.face_recog.recheck_every": "re-recognise a tracked face every N frames",
+  "modules.face_recog.votes": "majority over the last N results",
+  "modules.head_pose.look_threshold": "degrees before 'left/right/up/down'",
+  "modules.hands.stable_frames": "runs a gesture must hold",
+  "modules.pose.slouch_ratio": "lower = stricter slouch check",
+  "modules.pose.style": "dance = neon skeleton",
+  "modules.objects.classes": "comma list; empty = all 80 COCO classes",
+  "events.object_ignore": "comma list of classes not logged as events",
+  "events.keep_days": "0 = keep forever",
+  "outputs.mqtt.host": "broker for the optional JINX link",
+  "outputs.mqtt.head_track_hz": "jinx/head_track max rate",
+};
+const SECTION_TITLES = { camera: "Camera", hub: "Hub", modules: "Modules", events: "Events", outputs: "Outputs", paths: "Paths" };
+
+let meta = null, original = null, current = null, cameras = [];
+
+const get = (obj, path) => path.split(".").reduce((o, k) => o?.[k], obj);
+function set(obj, path, val) {
+  const ks = path.split("."); let o = obj;
+  for (const k of ks.slice(0, -1)) o = o[k];
+  o[ks.at(-1)] = val;
+}
+const pretty = k => k.replace(/_/g, " ").replace(/\bs$/, "s").replace(/\bn\b/, "N").replace(/\bhz\b/, "Hz");
+
+function input(path, value) {
+  const choices = meta.choices[path];
+  const lim = meta.limits[path] || {};
+  const onchange = e => {
+    const t = e.target;
+    let v;
+    if (t.type === "checkbox") v = t.checked;
+    else if (t.type === "number") v = t.value === "" ? null : Number(t.value);
+    else if (Array.isArray(get(original, path))) v = t.value.split(",").map(s => s.trim()).filter(Boolean);
+    else v = t.value;
+    if (path === "camera.source" && /^\d+$/.test(String(v).trim())) v = Number(v);
+    set(current, path, v);
+    t.classList.toggle("changed", JSON.stringify(v) !== JSON.stringify(get(original, path)));
+    updateDirty();
+  };
+  if (path === "camera.source") {
+    const listId = "cam-list";
+    return [el("input", { type: "text", value: value, list: listId, onchange, oninput: onchange }),
+      el("datalist", { id: listId }, cameras.map(c => el("option", { value: c.index }, `${c.index}: ${c.name}`)))];
+  }
+  if (choices) return el("select", { onchange }, choices.map(c => el("option", { value: c, selected: c === value }, c)));
+  if (typeof value === "boolean") return el("label", { class: "switch" }, el("input", { type: "checkbox", checked: value, onchange }), el("span"));
+  if (typeof value === "number") {
+    const step = Number.isInteger(value) && !String(path).match(/threshold|smoothing|ratio|score|conf|visibility/) ? 1 : "any";
+    return el("input", { type: "number", value, step, min: lim.min, max: lim.max, onchange, oninput: onchange });
+  }
+  if (Array.isArray(value)) return el("input", { type: "text", value: value.join(", "), onchange, oninput: onchange });
+  return el("input", { type: "text", value: value ?? "", onchange, oninput: onchange });
+}
+
+function rows(obj, prefix) {
+  const out = [];
+  for (const [k, v] of Object.entries(obj)) {
+    const path = prefix + k;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const title = prefix === "modules." ? (MODULE_LABELS[k] || pretty(k)) : pretty(k);
+      out.push(el("div", { class: "sub" }, title));
+      out.push(...rows(v, path + "."));
+    } else {
+      const help = HELP[path] || HELP[k];
+      out.push(el("label", {}, pretty(k), help ? el("small", {}, help) : ""), el("div", {}, input(path, v)));
+    }
+  }
+  return out;
+}
+
+function render() {
+  const box = document.getElementById("sections");
+  box.replaceChildren(...Object.entries(current).map(([sec, obj]) =>
+    el("div", { class: "panel" }, el("div", { class: "panel-head" }, el("h2", {}, SECTION_TITLES[sec] || sec)),
+      el("div", { class: "kv" }, rows(obj, sec + ".")))));
+  updateDirty();
+}
+
+function diff(a, b, prefix = "", out = {}) {
+  for (const k of Object.keys(b)) {
+    if (b[k] && typeof b[k] === "object" && !Array.isArray(b[k])) {
+      const sub = diff(a[k], b[k], prefix + k + ".", {});
+      if (Object.keys(sub).length) out[k] = sub;
+    } else if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out[k] = b[k];
+  }
+  return out;
+}
+const flat = (o, p = "") => Object.entries(o).flatMap(([k, v]) => v && typeof v === "object" && !Array.isArray(v) ? flat(v, p + k + ".") : [p + k]);
+
+function updateDirty() {
+  const n = flat(diff(original, current)).length;
+  document.getElementById("dirty").textContent = n ? `${n} unsaved change${n > 1 ? "s" : ""}` : (meta.saved ? "saved" : "using defaults");
+  document.getElementById("save").disabled = !n;
+  document.getElementById("revert").disabled = !n;
+}
+
+document.getElementById("revert").addEventListener("click", () => { current = structuredClone(original); render(); });
+document.getElementById("save").addEventListener("click", async () => {
+  const patch = diff(original, current);
+  const restart = flat(patch).filter(p => meta.restart_keys.includes(p));
+  try {
+    const r = await api("/api/config", { method: "PUT", json: patch });
+    original = r.config; current = structuredClone(original); meta.saved = true;
+    render();
+    toast(restart.length ? `saved. Restart the hub for: ${restart.join(", ")}` : "saved and applied");
+  } catch (e) { toast(e.message, true); }
+});
+
+async function load() {
+  [meta, cameras] = await Promise.all([api("/api/config"), api("/api/cameras").catch(() => [])]);
+  original = meta.config; current = structuredClone(original);
+  document.getElementById("path").textContent = meta.path;
+  render();
+  const ms = await api("/api/models");
+  document.getElementById("models").replaceChildren(
+    el("tr", {}, ["Model", "Module", "License", "MB", ""].map(h => el("th", {}, h))),
+    ...ms.map(m => el("tr", {},
+      el("td", {}, el("a", { href: m.source, target: "_blank", rel: "noopener" }, m.description)),
+      el("td", { class: "mono" }, m.module), el("td", {}, m.license), el("td", { class: "mono" }, m.size_mb),
+      el("td", {}, m.present ? el("span", { class: "tag role-owner" }, "ready") : el("span", { class: "tag muted" }, "not downloaded")))));
+}
+load();
+</script>
+</body>
+</html>
