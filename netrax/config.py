@@ -91,7 +91,7 @@ class PoseCfg(ModuleCfg):
     person_score: float = Field(0.5, ge=0.05, le=1.0)
     min_visibility: float = Field(0.5, ge=0.0, le=1.0)
     style: Literal["skeleton", "dance"] = "skeleton"
-    slouch_ratio: float = Field(0.55, ge=0.1, le=2.0)
+    slouch_drop: float = Field(0.2, ge=0.05, le=0.6)
     tilt_deg: float = Field(12, ge=1, le=45)
 
 

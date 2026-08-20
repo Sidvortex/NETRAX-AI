@@ -56,7 +56,7 @@ modules:
     person_score: 0.5
     min_visibility: 0.5
     style: skeleton    # skeleton | dance
-    slouch_ratio: 0.55 # (shoulders - nose) / shoulder width below this = slouching
+    slouch_drop: 0.2   # slouching = head drops 20% below your own upright height (self-calibrating)
     tilt_deg: 12       # shoulder tilt above this = leaning
 
   objects:             # NanoDet-Plus (default) or YOLOX-S, COCO 80 classes
