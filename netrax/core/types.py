@@ -108,7 +108,7 @@ class Pose(Result):
     bbox: np.ndarray            # x1, y1, x2, y2
     keypoints: np.ndarray       # 17x3 COCO order: x, y, visibility
     score: float
-    posture: str = "unknown"    # upright | slouching | leaning | unknown
+    posture: str = "unknown"    # upright | slouching | leaning | calibrating | unknown
     metrics: dict = field(default_factory=dict)
 
 
