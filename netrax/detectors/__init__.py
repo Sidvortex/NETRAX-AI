@@ -15,6 +15,7 @@ REGISTRY: dict[str, str] = {
     "head_pose": "netrax.detectors.head_pose:HeadPoseEstimator",
     "hands": "netrax.detectors.hands:HandTracker",
     "pose": "netrax.detectors.pose:PoseEstimator",
+    "objects": "netrax.detectors.objects:ObjectDetector",
 }
 
 # draw order: big/background things first, face labels last so they stay readable
