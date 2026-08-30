@@ -86,9 +86,11 @@ class HeadPose(Result):
 @dataclass
 class Emotion(Result):
     kind: ClassVar[str] = "emotion"
+    _private: ClassVar[tuple[str, ...]] = ("bbox",)
     track_id: int
     label: str
     score: float
+    bbox: np.ndarray | None = None  # face box, for drawing only
 
 
 @dataclass
