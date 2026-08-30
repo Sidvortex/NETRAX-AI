@@ -197,8 +197,36 @@ def run(args) -> int:
     return 1 if r.failed else 0
 
 
-# more checks (DB, MQTT) register here
-EXTRA_CHECKS: list = []
+def check_db(r: Report, s) -> None:
+    from netrax.db.store import Store
+
+    try:
+        st = Store(s.data_dir)
+        people = st.list_people()
+        owners = [p["name"] for p in people if p["role"] == "owner"]
+        _, total = st.query_events(limit=1)
+        r.add(OK, f"database schema v{st.schema_version()}",
+              f"{len(people)} people ({', '.join(owners) or 'no owner yet'}), {total} events")
+        if not people:
+            r.add(WARN, "nobody enrolled", "netrax enroll --name YourName --role owner")
+        st.close()
+    except Exception as e:  # noqa: BLE001
+        r.add(FAIL, "database", str(e))
+
+
+def check_mqtt(r: Report, s) -> None:
+    c = s.cfg.outputs.mqtt
+    if not c.enabled:
+        r.add(OK, "MQTT off", "(optional JINX link; enable under outputs.mqtt)")
+        return
+    try:
+        with socket.create_connection((c.host, c.port), timeout=2):
+            r.add(OK, f"MQTT broker {c.host}:{c.port} reachable")
+    except OSError as e:
+        r.add(WARN, f"MQTT broker {c.host}:{c.port} not reachable", f"{e}; NETRAX keeps working and retries")
+
+
+EXTRA_CHECKS: list = [check_db, check_mqtt]
 
 if os.environ.get("NO_COLOR"):
     MARK = PLAIN
