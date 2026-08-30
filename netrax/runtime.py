@@ -13,6 +13,7 @@ from netrax.core.source import FrameSource
 from netrax.db.store import Store
 from netrax.detectors import load_class
 from netrax.outputs.jsonl import JsonlWriter
+from netrax.outputs.mqtt import MqttPublisher
 
 log = logging.getLogger("netrax")
 
@@ -31,18 +32,25 @@ class Runtime:
         self.events = EventBus(settings, self.store)
         self.engine.hooks += [self.enroller, self.events]
         self.events.on_event(JsonlWriter(settings))
+        self.mqtt = MqttPublisher(settings, status_fn=self.engine.status)
+        self.engine.hooks.append(self.mqtt)
+        self.events.on_event(self.mqtt.on_event)
 
     def start(self) -> "Runtime":
         self.settings.data_dir.mkdir(parents=True, exist_ok=True)
         self.engine.start()
+        self.mqtt.apply()
         return self
 
     def stop(self) -> None:
+        self.mqtt.stop()
         self.engine.stop()
         self.store.close()
 
     def status(self) -> dict:
-        return self.engine.status()
+        s = self.engine.status()
+        s["mqtt"] = self.mqtt.status()
+        return s
 
 
 def setup_logging(level: str = "INFO") -> None:
