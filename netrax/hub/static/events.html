@@ -13,12 +13,12 @@
     .types button.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan); }
     .types button .n { font: 11px var(--mono); opacity: .75; margin-left: 4px; }
     .day { margin: 18px 0 8px; font: 12px var(--mono); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
-    .ev { display: grid; grid-template-columns: 70px 92px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+    .ev { display: grid; grid-template-columns: 96px 92px minmax(0, 1fr) auto; gap: 12px; align-items: center;
           padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); margin-bottom: 6px; }
-    .ev .t { font: 12px var(--mono); color: var(--muted); }
+    .ev .t { font: 12px var(--mono); color: var(--muted); white-space: nowrap; }
     .ev .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ev img { width: 72px; height: 48px; object-fit: cover; border-radius: 6px; cursor: zoom-in; border: 1px solid var(--line); }
-    @media (max-width: 600px) { .ev { grid-template-columns: 56px 1fr auto; } .ev .tagcell { display: none; } }
+    @media (max-width: 600px) { .ev { grid-template-columns: 84px 1fr auto; } .ev .tagcell { display: none; } }
     .type-seen { color: var(--green); } .type-unknown { color: var(--red); } .type-gesture { color: var(--magenta); }
     .type-object { color: var(--cyan); } .type-posture { color: var(--yellow); } .type-system { color: var(--muted); }
     #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.88); display: none; place-items: center; z-index: 30; cursor: zoom-out; padding: 16px; }
