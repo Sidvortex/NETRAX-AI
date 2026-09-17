@@ -100,6 +100,7 @@ main { padding: 16px; max-width: 1400px; margin: 0 auto 64px; }
 .list li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
 .list li:first-child { border-top: 0; }
 .empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+.panel.empty { padding: 14px; grid-column: 1 / -1; }
 .tag { font: 11px var(--mono); padding: 1px 7px; border-radius: 99px; border: 1px solid currentColor; }
 .role-owner { color: var(--green); }
 .role-allowed { color: var(--cyan); }
