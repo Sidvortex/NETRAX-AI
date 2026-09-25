@@ -1,0 +1,33 @@
+NETRAX v2 third-party notices
+=============================
+
+Models (downloaded at first run, not stored in this repository), all from
+OpenCV Zoo, https://github.com/opencv/opencv_zoo :
+
+  face_detection_yunet_2026may.onnx                         MIT
+  face_recognition_sface_2021dec.onnx                       Apache-2.0
+  palm_detection_mediapipe_2023feb.onnx                     Apache-2.0
+  handpose_estimation_mediapipe_2023feb.onnx                Apache-2.0
+  person_detection_mediapipe_2023mar.onnx                   Apache-2.0
+  pose_estimation_mediapipe_2023mar.onnx                    Apache-2.0
+  object_detection_nanodet_2022nov.onnx                     Apache-2.0
+  object_detection_yolox_2022nov.onnx                       Apache-2.0
+  facial_expression_recognition_mobilefacenet_2022july.onnx Apache-2.0
+
+Code adapted from OpenCV Zoo (Apache License 2.0):
+  netrax/detectors/mediapipe_onnx.py  <- palm_detection_mediapipe/mp_palmdet.py,
+                                         handpose_estimation_mediapipe/mp_handpose.py,
+                                         person_detection_mediapipe/mp_persondet.py,
+                                         pose_estimation_mediapipe/mp_pose.py
+  netrax/detectors/hands.py, pose.py  <- the same files (crop/rotate logic)
+  netrax/detectors/objects.py         <- object_detection_nanodet/nanodet.py,
+                                         object_detection_yolox/yolox.py
+  netrax/detectors/emotion.py         <- facial_expression_recognition/facial_fer_model.py
+                                         (5-point alignment template)
+Changes: restructured into NETRAX detector plugins, anchors generated instead of
+hard-coded, outputs selected by name/shape for OpenCV 5, small cleanups.
+Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
+Runtime libraries: OpenCV (Apache-2.0), NumPy (BSD-3-Clause), FastAPI (MIT),
+Uvicorn (BSD-3-Clause), pydantic (MIT), PyYAML (MIT), psutil (BSD-3-Clause),
+paho-mqtt (EPL-2.0 OR EDL-1.0/BSD-3-Clause).
